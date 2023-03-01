@@ -1,0 +1,52 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Elm + Websockets</title>
+  <script type="text/javascript" src="elm.js"></script>
+  <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+</head>
+
+<body>
+	<h1>Elmo</h1>
+    <div id="myapp"></div>
+</body>
+
+<script type="text/javascript">
+
+// Start the Elm application.
+var app = Elm.Main.init({
+    node: document.getElementById('myapp')
+});
+
+// Create your Peer object.
+const peer = new Peer();
+
+peer.on('open', function(id) {
+  console.log('My peer ID is: ' + id);
+
+	// get id from hash and connect to peer and remove hash
+	const hash = window.location.hash.slice(1);
+
+	if(hash) {
+		peer.connect(hash);
+		console.log('connected to peer', hash);
+	}
+
+	peer.on('connection', function(conn) {
+		console.log('connected to peer', conn.peer);
+		app.ports.sendMessage.subscribe((message) => {
+			console.log('sending message', message)
+			conn.send(message);
+		});
+		conn.on('data', (data) => {
+			console.log('received message', data)
+			app.ports.messageReceiver.send(data);
+		});
+	});
+
+});
+</script>
+
+</html>
