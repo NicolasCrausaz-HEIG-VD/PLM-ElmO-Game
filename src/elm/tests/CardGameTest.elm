@@ -1,4 +1,4 @@
-module CardGameTest exposing (..)
+module elm.tests.CardGameTest exposing (..)
 
 import CardGame exposing (..)
 import Expect exposing (Expectation)
