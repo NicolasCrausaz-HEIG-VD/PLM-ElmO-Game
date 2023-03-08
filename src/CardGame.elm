@@ -1,6 +1,8 @@
 module CardGame exposing (..)
 
 import List.Extra
+import Random
+import Random.List
 
 
 type Color
@@ -42,22 +44,32 @@ type alias Game =
 
 
 -- INIT
-
-
 allCards : List Card
 allCards =
     let
         colors =
             [ Red, Blue, Green, Yellow ]
 
-        numbers =
-            List.range 1 9
+        numbers = 0 :: List.concatMap (\_ -> List.range 1 9) (List.range 1 2) -- one 0 and 2 of each number 1-9
+
+        drawCards = 2 -- 2 for each color
+
+        skipCards = 2 -- 2 for each color
+
+        reverseCards = 2 -- 2 for each color
+
+        wildCards = 4 -- 4 wild cards
     in
     List.concatMap (\color -> List.map (\number -> NumberCard number color) numbers) colors
-        ++ List.concatMap (\color -> List.map (\number -> DrawCard number color) numbers) colors
-        ++ List.concatMap (\color -> List.map (\_ -> SkipCard color) numbers) colors
-        ++ List.concatMap (\color -> List.map (\_ -> ReverseCard color) numbers) colors
-        ++ List.map (\_ -> WildCard) (List.range 0 4)
+        ++ List.concatMap (\color -> List.map (\_ -> DrawCard drawCards color) (List.range 1 drawCards)) colors
+        ++ List.concatMap (\color -> List.map (\_ -> SkipCard color) (List.range 1 skipCards)) colors
+        ++ List.concatMap (\color -> List.map (\_ -> ReverseCard color) (List.range 1 reverseCards)) colors
+        ++ List.map (\_ -> WildCard) (List.range 1 wildCards)
+    
+
+shuffle : List e -> Random.Seed -> List e
+shuffle list seed = (Random.step (Random.List.shuffle list) seed) |> Tuple.first
+
 
 
 
@@ -90,7 +102,7 @@ getFirstCard game =
         card :: rest ->
             case card of
                 NumberCard _ color ->
-                    { game | activeCard = Just card, activeColor = Just color }
+                    { game | activeCard = Just card, activeColor = Just color, drawStack = rest }
 
                 _ ->
                     getFirstCard { game | drawStack = rest ++ [ card ] }
@@ -132,7 +144,7 @@ nextPlayer players =
 
         player :: rest ->
             rest ++ [ player ]
-
+            
 initGame : Game
 initGame =
     { players = []
@@ -140,3 +152,18 @@ initGame =
     , activeCard = Nothing
     , activeColor = Nothing
     }
+
+shuffleGame : Game -> Random.Seed -> Game
+shuffleGame game seed =
+    { game | drawStack = shuffle game.drawStack seed }
+
+
+-- Return the current player or Nothing if no player is playing
+getCurrentPlayer : Game -> Maybe Player
+getCurrentPlayer game =
+    case game.players of
+        [] ->
+            Nothing
+
+        player :: _ ->
+            Just player

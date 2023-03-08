@@ -6,14 +6,14 @@ import Debug exposing (toString)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Random
+import Random.List
 
 
 
 -- MAIN
 
-
-type Msg
-    = Start
+type Msg = Start Int | Next
 
 
 main : Program () CardGame.Game Msg
@@ -22,26 +22,45 @@ main =
 
 
 init : () -> ( CardGame.Game, Cmd Msg )
-init _ =
-    let
-        game =
-            CardGame.initGame
-                |> CardGame.addPlayer "Player 1"
-                |> CardGame.addPlayer "Player 2"
-    in
-    ( game, Cmd.none )
+init _ = ( CardGame.initGame, Cmd.none )
 
 
 view : CardGame.Game -> Html Msg
 view game =
     div []
-        [ button [ onClick Start ] [ text "Start" ]
+        [ button [ onClick (Start 1) ] [ text "Start" ]
+        , button [ onClick Next ] [ text "Next" ]
         , div []
             (List.map printPlayer game.players)
         , div []
-            [ printCards game.drawStack
+            [ 
+                p [] [ text "Current player:", text (toString (CardGame.getCurrentPlayer game)) ]
+                ,p [] [ text "Current card:", text (toString game.activeCard) ]
+                ,p [] [ text "Current color:", text (toString game.activeColor) ]
+                ,printCards game.drawStack
             ]
         ]
+
+update : Msg -> Game -> ( Game, Cmd Msg )
+update msg game =
+    case msg of
+        Start seed -> ( (CardGame.shuffleGame game (Random.initialSeed seed)) 
+            |> CardGame.addPlayer("Player 1")
+            |> CardGame.addPlayer("Player 2")
+            |> CardGame.addPlayer("Player 3")
+            |> CardGame.getFirstCard
+            , Cmd.none )
+        Next -> ( game |> CardGame.nextTurn, Cmd.none )
+
+
+
+
+subscriptions : Game -> Sub Msg
+subscriptions _ =
+    Sub.none
+
+
+-- HELPERS
 
 
 printPlayer : Player -> Html Msg
@@ -58,15 +77,3 @@ printCards : List Card -> Html Msg
 printCards cards =
     ul []
         (List.map (\card -> li [] [ text (toString card) ]) cards)
-
-
-update : Msg -> Game -> ( Game, Cmd Msg )
-update msg game =
-    case msg of
-        Start ->
-            ( game, Cmd.none )
-
-
-subscriptions : Game -> Sub Msg
-subscriptions _ =
-    Sub.none
