@@ -23,17 +23,41 @@ main =
 
 init : () -> ( CardGame.Game, Cmd Msg )
 init _ =
-    ( CardGame.initGame, Cmd.none )
+    let
+        game =
+            CardGame.initGame
+                |> CardGame.addPlayer "Player 1"
+                |> CardGame.addPlayer "Player 2"
+    in
+    ( game, Cmd.none )
 
 
 view : CardGame.Game -> Html Msg
-view gameView =
+view game =
     div []
-        [ div []
-            [ button [ onClick Start ] [ text "Start" ] ]
+        [ button [ onClick Start ] [ text "Start" ]
         , div []
-            [ text (toString gameView) ]
+            (List.map printPlayer game.players)
+        , div []
+            [ printCards game.drawStack
+            ]
         ]
+
+
+printPlayer : Player -> Html Msg
+printPlayer player =
+    div []
+        [ text player.name
+        , div []
+            [ printCards player.hand
+            ]
+        ]
+
+
+printCards : List Card -> Html Msg
+printCards cards =
+    ul []
+        (List.map (\card -> li [] [ text (toString card) ]) cards)
 
 
 update : Msg -> Game -> ( Game, Cmd Msg )
