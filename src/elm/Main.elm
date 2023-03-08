@@ -4,7 +4,6 @@ import Browser
 import CardGame exposing (..)
 import Debug exposing (toString)
 import Html exposing (..)
-import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Random
 
@@ -32,7 +31,7 @@ view game =
         , div []
             (List.map printPlayer game.players)
         , div []
-            [ 
+            [
                 p [] [ text "Current player:", text (toString (CardGame.getCurrentPlayer game)) ]
                 ,p [] [ text "Current card:", text (toString game.activeCard) ]
                 ,p [] [ text "Current color:", text (toString game.activeColor) ]
@@ -43,7 +42,7 @@ view game =
 update : Msg -> Game -> ( Game, Cmd Msg )
 update msg game =
     case msg of
-        Start seed -> ( (CardGame.shuffleGame game (Random.initialSeed seed)) 
+        Start seed -> ( (CardGame.shuffleGame game (Random.initialSeed seed))
             |> CardGame.addPlayer("Player 1")
             |> CardGame.addPlayer("Player 2")
             |> CardGame.addPlayer("Player 3")

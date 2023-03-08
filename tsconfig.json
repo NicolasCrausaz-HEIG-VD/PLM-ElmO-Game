@@ -16,6 +16,9 @@
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": ["src"],
+  "include": [
+    "src",
+    "node_modules/.pnpm/@types+elm@0.19.1/node_modules/@types/elm/index.d.ts"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

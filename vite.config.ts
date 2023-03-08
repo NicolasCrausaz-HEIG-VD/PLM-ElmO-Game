@@ -4,5 +4,5 @@ import {plugin as elm} from 'vite-plugin-elm'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), elm()],
+  plugins: [react(), elm({ debug: true })],
 })

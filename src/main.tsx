@@ -5,7 +5,7 @@ import App from './App'
 import './index.css'
 
 const appState = Elm.Main.init({
-  node: document.getElementById('elm-root'),
+  node: document.getElementById('elm-root')!,
 });
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
