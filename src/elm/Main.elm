@@ -1,4 +1,4 @@
-module Main exposing (..)
+port module Main exposing (..)
 
 import Browser
 import CardGame exposing (..)
@@ -7,7 +7,11 @@ import Html exposing (..)
 import Html.Events exposing (..)
 import Random
 
+-- PORTS
 
+port sendMsg : String -> Cmd msg
+
+port handleMsg : (String -> msg) -> Sub msg
 
 -- MAIN
 
@@ -48,14 +52,18 @@ update msg game =
             |> CardGame.addPlayer("Player 3")
             |> CardGame.getFirstCard
             , Cmd.none )
-        Next -> ( game |> CardGame.nextTurn, Cmd.none )
+        Next -> ( game |> CardGame.nextTurn, sendMsg "next" )
 
 
 
 
 subscriptions : Game -> Sub Msg
 subscriptions _ =
-    Sub.none
+    -- TODO: handle messages from the server
+    handleMsg (\msg -> case msg of
+        "next" -> Next
+        _ -> Next
+    )
 
 
 -- HELPERS
