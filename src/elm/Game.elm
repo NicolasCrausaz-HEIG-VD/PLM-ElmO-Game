@@ -1,23 +1,10 @@
-module CardGame exposing (..)
+module Game exposing (..)
 
+import Card exposing (Card(..))
+import Color exposing (Color(..))
 import List.Extra
 import Random
 import Random.List
-
-
-type Color
-    = Red
-    | Blue
-    | Green
-    | Yellow
-
-
-type Card
-    = NumberCard Int Color
-    | DrawCard Int Color
-    | SkipCard Color
-    | ReverseCard Color
-    | WildCard
 
 
 type alias Hand =
@@ -34,14 +21,12 @@ type alias Player =
     }
 
 
-type alias Game =
+type alias State =
     { players : List Player
     , drawStack : Draw
     , activeCard : Maybe Card
     , activeColor : Maybe Color
     }
-
-
 
 -- INIT
 allCards : List Card
@@ -59,13 +44,16 @@ allCards =
         reverseCards = 2 -- 2 for each color
 
         wildCards = 4 -- 4 wild cards
+
+        wildDrawCards = 4 -- 4 wild draw cards
     in
     List.concatMap (\color -> List.map (\number -> NumberCard number color) numbers) colors
-        ++ List.concatMap (\color -> List.map (\_ -> DrawCard drawCards color) (List.range 1 drawCards)) colors
+        ++ List.concatMap (\color -> List.map (\_ -> DrawCard color) (List.range 1 drawCards)) colors
         ++ List.concatMap (\color -> List.map (\_ -> SkipCard color) (List.range 1 skipCards)) colors
         ++ List.concatMap (\color -> List.map (\_ -> ReverseCard color) (List.range 1 reverseCards)) colors
+        ++ List.map (\_ -> WildDrawCard) (List.range 1 wildDrawCards)
         ++ List.map (\_ -> WildCard) (List.range 1 wildCards)
-    
+
 
 shuffle : List e -> Random.Seed -> List e
 shuffle list seed = (Random.step (Random.List.shuffle list) seed) |> Tuple.first
@@ -76,7 +64,7 @@ shuffle list seed = (Random.step (Random.List.shuffle list) seed) |> Tuple.first
 -- LOGIC
 
 
-addPlayer : String -> Game -> Game
+addPlayer : String -> State -> State
 addPlayer name game =
     let
         ( hand, drawStack ) =
@@ -93,7 +81,7 @@ addPlayer name game =
 -- Infinite loop if no card is playable fixing passing array in params
 
 
-getFirstCard : Game -> Game
+getFirstCard : State -> State
 getFirstCard game =
     case game.drawStack of
         [] ->
@@ -112,18 +100,18 @@ getFirstCard game =
 -- Return a game for the next turn
 
 
-nextTurn : Game -> Game
+nextTurn : State -> State
 nextTurn game =
     { game | players = nextPlayer game.players }
 
 
-handleCardPlay : Card -> Game -> Game
+handleCardPlay : Card -> State -> State
 handleCardPlay card game =
     case card of
         NumberCard _ color ->
             { game | activeCard = Just card, activeColor = Just color }
 
-        DrawCard _ color ->
+        DrawCard color ->
             { game | activeCard = Just card, activeColor = Just color }
 
         ReverseCard color ->
@@ -135,6 +123,9 @@ handleCardPlay card game =
         WildCard ->
             { game | activeCard = Just card, activeColor = Nothing }
 
+        WildDrawCard ->
+            { game | activeCard = Just card, activeColor = Nothing }
+
 
 nextPlayer : List Player -> List Player
 nextPlayer players =
@@ -144,8 +135,8 @@ nextPlayer players =
 
         player :: rest ->
             rest ++ [ player ]
-            
-initGame : Game
+
+initGame : State
 initGame =
     { players = []
     , drawStack = allCards
@@ -153,13 +144,13 @@ initGame =
     , activeColor = Nothing
     }
 
-shuffleGame : Game -> Random.Seed -> Game
+shuffleGame : State -> Random.Seed -> State
 shuffleGame game seed =
     { game | drawStack = shuffle game.drawStack seed }
 
 
 -- Return the current player or Nothing if no player is playing
-getCurrentPlayer : Game -> Maybe Player
+getCurrentPlayer : State -> Maybe Player
 getCurrentPlayer game =
     case game.players of
         [] ->

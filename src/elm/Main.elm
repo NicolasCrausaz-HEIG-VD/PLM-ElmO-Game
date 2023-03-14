@@ -1,9 +1,12 @@
 port module Main exposing (..)
 
 import Browser
-import CardGame exposing (..)
+import Card exposing (Card)
+import CardView
+import Game exposing (..)
 import Debug exposing (toString)
 import Html exposing (..)
+import Html.Attributes exposing (class)
 import Html.Events exposing (..)
 import Random
 
@@ -15,19 +18,19 @@ port handleMsg : (String -> msg) -> Sub msg
 
 -- MAIN
 
-type Msg = Start Int | Next
+type Msg = Start Int | Next | CardClicked Card
 
 
-main : Program () CardGame.Game Msg
+main : Program () Game.State Msg
 main =
     Browser.element { init = init, view = view, update = update, subscriptions = subscriptions }
 
 
-init : () -> ( CardGame.Game, Cmd Msg )
-init _ = ( CardGame.initGame, Cmd.none )
+init : () -> ( Game.State, Cmd Msg )
+init _ = ( Game.initGame, Cmd.none )
 
 
-view : CardGame.Game -> Html Msg
+view : Game.State -> Html Msg
 view game =
     div []
         [ button [ onClick (Start 1) ] [ text "Start" ]
@@ -36,28 +39,33 @@ view game =
             (List.map printPlayer game.players)
         , div []
             [
-                p [] [ text "Current player:", text (toString (CardGame.getCurrentPlayer game)) ]
+                p [] [ text "Current player:", text (toString (Game.getCurrentPlayer game)) ]
                 ,p [] [ text "Current card:", text (toString game.activeCard) ]
                 ,p [] [ text "Current color:", text (toString game.activeColor) ]
                 ,printCards game.drawStack
             ]
         ]
 
-update : Msg -> Game -> ( Game, Cmd Msg )
+update : Msg -> State -> ( State, Cmd Msg )
 update msg game =
     case msg of
-        Start seed -> ( (CardGame.shuffleGame game (Random.initialSeed seed))
-            |> CardGame.addPlayer("Player 1")
-            |> CardGame.addPlayer("Player 2")
-            |> CardGame.addPlayer("Player 3")
-            |> CardGame.getFirstCard
+        Start seed -> ( (Game.shuffleGame game (Random.initialSeed seed))
+            |> Game.addPlayer("Player 1")
+            |> Game.addPlayer("Player 2")
+            |> Game.addPlayer("Player 3")
+            |> Game.getFirstCard
             , Cmd.none )
-        Next -> ( game |> CardGame.nextTurn, sendMsg "next" )
+        Next -> ( game |> Game.nextTurn, sendMsg "next" )
+        CardClicked card ->
+            let
+                _ = Debug.log "Clicked card" card
+            in
+                ( game, Cmd.none )
 
 
 
 
-subscriptions : Game -> Sub Msg
+subscriptions : State -> Sub Msg
 subscriptions _ =
     -- TODO: handle messages from the server
     handleMsg (\msg -> case msg of
@@ -81,5 +89,5 @@ printPlayer player =
 
 printCards : List Card -> Html Msg
 printCards cards =
-    ul []
-        (List.map (\card -> li [] [ text (toString card) ]) cards)
+    div [class "cards"]
+    (List.map (\card -> (CardView.view [onClick (CardClicked card)] {size = "100px", flipped = True} card)) cards)

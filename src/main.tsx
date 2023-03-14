@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { Elm } from './elm/Main.elm'
 import App from './App'
 import './index.css'
+import './Card.scss'
 import { Network } from './network'
 
 type Ports = {
