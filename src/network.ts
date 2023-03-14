@@ -39,6 +39,10 @@ export class Network<T> extends Emittery<NetworkEvent<T>> {
     });
   }
 
+  public onReady(cb: (code: string) => void) {
+    this.isReady.then(() => cb(parseId(this.peer.id)));
+  }
+
   private addConnection(conn: DataConnection) {
     void this.emit('newConnection', conn);
     this.connections.push(conn);

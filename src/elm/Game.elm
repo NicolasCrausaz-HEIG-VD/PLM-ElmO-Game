@@ -28,24 +28,41 @@ type alias State =
     , activeColor : Maybe Color
     }
 
+
+
 -- INIT
+
+
 allCards : List Card
 allCards =
     let
         colors =
             [ Red, Blue, Green, Yellow ]
 
-        numbers = 0 :: List.concatMap (\_ -> List.range 1 9) (List.range 1 2) -- one 0 and 2 of each number 1-9
+        numbers =
+            0 :: List.concatMap (\_ -> List.range 1 9) (List.range 1 2)
 
-        drawCards = 2 -- 2 for each color
+        -- one 0 and 2 of each number 1-9
+        drawCards =
+            2
 
-        skipCards = 2 -- 2 for each color
+        -- 2 for each color
+        skipCards =
+            2
 
-        reverseCards = 2 -- 2 for each color
+        -- 2 for each color
+        reverseCards =
+            2
 
-        wildCards = 4 -- 4 wild cards
+        -- 2 for each color
+        wildCards =
+            4
 
-        wildDrawCards = 4 -- 4 wild draw cards
+        -- 4 wild cards
+        wildDrawCards =
+            4
+
+        -- 4 wild draw cards
     in
     List.concatMap (\color -> List.map (\number -> NumberCard number color) numbers) colors
         ++ List.concatMap (\color -> List.map (\_ -> DrawCard color) (List.range 1 drawCards)) colors
@@ -56,8 +73,8 @@ allCards =
 
 
 shuffle : List e -> Random.Seed -> List e
-shuffle list seed = (Random.step (Random.List.shuffle list) seed) |> Tuple.first
-
+shuffle list seed =
+    Random.step (Random.List.shuffle list) seed |> Tuple.first
 
 
 
@@ -136,6 +153,7 @@ nextPlayer players =
         player :: rest ->
             rest ++ [ player ]
 
+
 initGame : State
 initGame =
     { players = []
@@ -144,12 +162,16 @@ initGame =
     , activeColor = Nothing
     }
 
-shuffleGame : State -> Random.Seed -> State
-shuffleGame game seed =
+
+shuffleGame : Random.Seed -> State -> State
+shuffleGame seed game =
     { game | drawStack = shuffle game.drawStack seed }
 
 
+
 -- Return the current player or Nothing if no player is playing
+
+
 getCurrentPlayer : State -> Maybe Player
 getCurrentPlayer game =
     case game.players of

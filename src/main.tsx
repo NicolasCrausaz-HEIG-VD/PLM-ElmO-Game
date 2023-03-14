@@ -12,6 +12,12 @@ type Ports = {
   }
   handleMsg: {
     send: (data: unknown) => void;
+  },
+  joinRoom: {
+    subscribe: (callback: (code: string) => void) => void;
+  },
+  createRoom: {
+    send: (code: string) => void;
   }
 }
 
@@ -23,12 +29,6 @@ console.log(appState);
 
 const network = new Network();
 
-// get code from url
-const code = new URLSearchParams(window.location.search).get('code');
-if (code) {
-  network.connect(code);
-}
-
 network.on('data', (data) => {
   console.log('data', data);
   appState.ports.handleMsg.send(data);
@@ -36,10 +36,16 @@ network.on('data', (data) => {
 
 appState.ports.sendMsg.subscribe((data) => {
   console.log('sendMsg', data);
-  network.send(data);
+  void network.send(data);
 });
 
-console.log(network.getPeerId());
+appState.ports.joinRoom.subscribe(code => {
+  void network.connect(code);
+});
+
+network.onReady(code => {
+  appState.ports.createRoom.send(code);
+});
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
