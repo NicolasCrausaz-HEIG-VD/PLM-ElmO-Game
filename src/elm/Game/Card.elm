@@ -1,6 +1,6 @@
-module Card exposing (..)
+module Game.Card exposing (..)
 
-import Color exposing (Color)
+import Game.Color as Color exposing (Color)
 
 
 type Card

@@ -1,4 +1,4 @@
-module Color exposing (..)
+module Game.Color exposing (..)
 
 
 type Color
