@@ -1,7 +1,7 @@
-module Game exposing (..)
+module Game.Game exposing (..)
 
-import Card exposing (Card(..))
-import Color exposing (Color(..))
+import Game.Card exposing (Card(..))
+import Game.Color exposing (Color(..))
 import List.Extra
 import Random
 import Random.List

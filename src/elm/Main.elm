@@ -1,14 +1,13 @@
 port module Main exposing (..)
 
-import Browser
-import Card exposing (Card)
-import CardView
-import Debug exposing (toString)
-import Game exposing (..)
+import Browser exposing (Document)
+import Browser.Navigation as Nav
 import Html exposing (..)
-import Html.Attributes exposing (class, placeholder, type_, value)
-import Html.Events exposing (..)
-import Random
+import Lobby
+import Room exposing (..)
+import Route exposing (Route)
+import Session exposing (Session)
+import Url exposing (Url)
 
 
 
@@ -27,119 +26,150 @@ port joinRoom : String -> Cmd msg
 port createRoom : (String -> msg) -> Sub msg
 
 
-
--- MAIN
-
-
-type Msg
-    = Start Int
-    | Next
-    | EditRoomId String
-    | JoinRoom
-    | CardClicked Card
+type Model
+    = Redirect Session
+    | Room Room.Model
+    | Lobby Lobby.Model
 
 
-type alias Model =
-    { game : Game.State
-    , roomId : Maybe String
+init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
+init _ url navKey =
+    changeRouteTo (Route.fromUrl url)
+        (Redirect (Session.create navKey))
+
+
+
+-- VIEW
+
+
+view : Model -> Document Msg
+view model =
+    case model of
+        Room room ->
+            viewWith RoomMsg (Room.view room)
+
+        Lobby lobby ->
+            viewWith LobbyMsg (Lobby.view lobby)
+
+        Redirect _ ->
+            { title = "Redirecting...", body = [] }
+
+
+viewWith : (subMsg -> Msg) -> { title : String, content : Html subMsg } -> Document Msg
+viewWith toMsg { title, content } =
+    { title = title
+    , body = [ content |> Html.map toMsg ]
     }
 
 
-main : Program () Model Msg
-main =
-    Browser.element { init = init, view = view, update = update, subscriptions = subscriptions }
+
+-- UPDATE
 
 
-init : () -> ( Model, Cmd Msg )
-init _ =
-    ( { game = Game.initGame
-      , roomId = Nothing
-      }
-    , Cmd.none
-    )
-
-
-view : Model -> Html Msg
-view { game, roomId } =
-    div []
-        [ button [ onClick (Start 1) ] [ text "Start" ]
-        , button [ onClick Next ] [ text "Next" ]
-        , input [ type_ "text", placeholder "Room ID", value (Maybe.withDefault "" roomId), onInput EditRoomId ] []
-        , button [ onClick JoinRoom ] [ text "Join room" ]
-        , div []
-            (List.map printPlayer game.players)
-        , div []
-            [ p [] [ text "Current player:", text (toString (Game.getCurrentPlayer game)) ]
-            , p [] [ text "Current card:", text (toString game.activeCard) ]
-            , p [] [ text "Current color:", text (toString game.activeColor) ]
-            , printCards game.drawStack
-            ]
-        ]
+type Msg
+    = UrlChanged Url
+    | LinkClicked Browser.UrlRequest
+    | RoomMsg Room.Msg
+    | LobbyMsg Lobby.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case ( msg, model ) of
-        ( Start seed, { game } ) ->
-            let
-                shuffledGame =
-                    game
-                        |> Game.shuffleGame (Random.initialSeed seed)
-                        |> Game.addPlayer "Player 1"
-                        |> Game.addPlayer "Player 2"
-                        |> Game.addPlayer "Player 3"
-                        |> Game.getFirstCard
-            in
-            ( { model | game = shuffledGame }, Cmd.none )
+        ( UrlChanged url, _ ) ->
+            changeRouteTo (Route.fromUrl url) model
 
-        ( Next, { game } ) ->
-            ( { model | game = game |> Game.nextTurn }, sendMsg "next" )
+        ( LinkClicked urlRequest, _ ) ->
+            case urlRequest of
+                Browser.Internal url ->
+                    ( model, Nav.pushUrl (Session.navKey (toSession model)) (Url.toString url) )
 
-        ( CardClicked card, _ ) ->
-            let
-                _ =
-                    Debug.log "Card clicked" card
-            in
+                Browser.External _ ->
+                    ( model, Cmd.none )
+
+        ( RoomMsg subMsg, Room room ) ->
+            Room.update subMsg room
+                |> updateWith Room RoomMsg model
+
+        ( LobbyMsg subMsg, Lobby lobby ) ->
+            Lobby.update subMsg lobby
+                |> updateWith Lobby LobbyMsg model
+
+        _ ->
             ( model, Cmd.none )
 
-        ( EditRoomId roomId, _ ) ->
-            ( { model | roomId = Just roomId }, Cmd.none )
 
-        ( JoinRoom, { roomId } ) ->
-            ( model, Maybe.map joinRoom roomId |> Maybe.withDefault Cmd.none )
+
+-- helpers for sub-models
+
+
+updateWith : (subModel -> Model) -> (subMsg -> Msg) -> Model -> ( subModel, Cmd subMsg ) -> ( Model, Cmd Msg )
+updateWith toModel toMsg _ ( subModel, subCmd ) =
+    ( toModel subModel
+    , Cmd.map toMsg subCmd
+    )
+
+
+toSession : Model -> Session
+toSession model =
+    case model of
+        Room room ->
+            Room.toSession room
+
+        Lobby lobby ->
+            Lobby.toSession lobby
+
+        Redirect session ->
+            session
+
+
+changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )
+changeRouteTo route model =
+    let
+        session =
+            toSession model
+    in
+    case route of
+        Just (Route.Room _) ->
+            Room.init session
+                |> updateWith Room RoomMsg model
+
+        Just Route.Lobby ->
+            Lobby.init session
+                |> updateWith Lobby LobbyMsg model
+
+        Nothing ->
+            ( model, Cmd.none )
+
+
+
+-- SUBSCRIPTIONS
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
-    Sub.batch
-        [ handleMsg
-            (\msg ->
-                case msg of
-                    "next" ->
-                        Next
+subscriptions model =
+    case model of
+        Room room ->
+            Sub.map RoomMsg (Room.subscriptions room)
 
-                    _ ->
-                        Next
-            )
-        , createRoom (\roomId -> EditRoomId roomId)
-        ]
+        Lobby lobby ->
+            Sub.map LobbyMsg (Lobby.subscriptions lobby)
+
+        _ ->
+            Sub.none
 
 
 
--- HELPERS
+-- MAIN
 
 
-printPlayer : Player -> Html Msg
-printPlayer player =
-    div []
-        [ text player.name
-        , div []
-            [ printCards player.hand
-            ]
-        ]
-
-
-printCards : List Card -> Html Msg
-printCards cards =
-    div [ class "cards" ]
-        (List.map (\card -> CardView.view [ onClick (CardClicked card) ] { size = "100px", flipped = True } card) cards)
+main : Program () Model Msg
+main =
+    Browser.application
+        { init = init
+        , view = view
+        , update = update
+        , subscriptions = subscriptions
+        , onUrlRequest = LinkClicked
+        , onUrlChange = UrlChanged
+        }

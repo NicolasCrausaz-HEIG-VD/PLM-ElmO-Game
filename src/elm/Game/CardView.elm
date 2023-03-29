@@ -1,6 +1,6 @@
-module CardView exposing (..)
+module Game.CardView exposing (..)
 
-import Card exposing (Card)
+import Game.Card as Card exposing (Card)
 import Html exposing (Attribute, Html, div, img)
 import Html.Attributes exposing (class, classList, src, style)
 
