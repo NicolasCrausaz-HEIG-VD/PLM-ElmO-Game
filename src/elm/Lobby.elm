@@ -104,7 +104,7 @@ update msg model =
             ( { model | isHost = False }, Cmd.none )
 
         StartGame ->
-            case model.code of
+            case getRoomCode model of
                 Just code ->
                     if model.isHost then
                         ( model, Route.replaceUrl (Session.navKey model.session) (Route.Room code) )
@@ -120,6 +120,13 @@ update msg model =
         SetHostCode code ->
             ( { model | hostCode = Just code }, Cmd.none )
 
+-- HELPERS
+getRoomCode : Model -> Maybe String
+getRoomCode model =
+    if model.isHost then
+        model.hostCode
+    else
+        model.code
 
 
 -- SUBSCRIPTIONS
@@ -138,4 +145,4 @@ subscriptions _ =
 
 toSession : Model -> Session
 toSession model =
-    Session.setRoomData (RoomData{ isHost = model.isHost, code = Maybe.withDefault "" model.code }) model.session
+    Session.setRoomData (RoomData{ isHost = model.isHost, code = Maybe.withDefault "" (getRoomCode model) }) model.session
