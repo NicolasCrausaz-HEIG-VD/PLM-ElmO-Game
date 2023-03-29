@@ -1,16 +1,22 @@
 port module Lobby exposing (..)
 
-import Html exposing (Html, button, div, input, text)
-import Html.Attributes exposing (placeholder)
+import Html exposing (Html, a, button, div, hr, img, input, li, text, ul)
+import Html.Attributes exposing (class, placeholder, src, value)
 import Html.Events exposing (onClick, onInput)
 import Route
 import Session exposing (Session)
 
+
+
 -- PORTS
+
+
 port joinRoom : String -> Cmd msg
 
 
 port createRoom : (String -> msg) -> Sub msg
+
+
 
 -- MODEL
 
@@ -40,15 +46,35 @@ view : Model -> { title : String, content : Html Msg }
 view model =
     { title = "Lobby"
     , content =
-        div []
-            [ button [ onClick HostGame ] [ text "Host Game" ]
-            , button [ onClick JoinGame ] [ text "Join Game" ]
-            , button [ onClick StartGame ] [ text "Start Game" ]
-            , if model.isHost then
-                div [] [ text ("Code: " ++ Maybe.withDefault "" model.code) ]
+        -- div []
+        --     [ button [ onClick HostGame ] [ text "Host Game" ]
+        --     , button [ onClick JoinGame ] [ text "Join Game" ]
+        --     , button [ onClick StartGame ] [ text "Start Game" ]
+        --     , if model.isHost then
+        --         div [] [ text ("Code: " ++ Maybe.withDefault "" model.code) ]
+        --       else
+        --         input [ placeholder "Code", onInput CodeInput ] []
+        --     ]
+        div [ class "lobby-menu" ]
+            [ div [ class "content" ]
+                [ img [ src "/logo.svg" ] []
+                , div [ class "title" ] [ text "ElmO" ]
+                , ul []
+                    [ li
+                        [ class "active"
+                        ]
+                        [ button [ onClick HostGame ] [ text "Host Game" ] ]
+                    , li []
+                        [ button [ onClick JoinGame ] [ text "Join Game" ] ]
+                    , li []
+                        [ button [ onClick StartGame ] [ text "Start Game" ] ]
+                    ]
+                , if model.isHost then
+                    div [] [ text ("Code: " ++ Maybe.withDefault "" model.code) ]
 
-              else
-                input [ placeholder "Code", onInput CodeInput ] []
+                  else
+                    input [ placeholder "Code", onInput CodeInput, value (Maybe.withDefault "" model.code) ] []
+                ]
             ]
     }
 
@@ -75,11 +101,11 @@ update msg model =
 
         StartGame ->
             case model.code of
-                Just code -> case model.isHost of
-                    True ->
+                Just code ->
+                    if model.isHost then
                         ( model, Route.replaceUrl (Session.navKey model.session) (Route.Room code) )
 
-                    False ->
+                    else
                         ( model, Cmd.batch [ joinRoom code, Route.replaceUrl (Session.navKey model.session) (Route.Room code) ] )
 
                 Nothing ->

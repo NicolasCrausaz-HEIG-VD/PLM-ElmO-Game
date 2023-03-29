@@ -1,5 +1,6 @@
 import { Elm } from './elm/Main.elm'
 import './index.css'
+import './index.scss'
 import './Card.scss'
 import { Network } from './network'
 
