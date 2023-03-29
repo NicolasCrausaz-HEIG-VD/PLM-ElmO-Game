@@ -1,4 +1,4 @@
-port module Main exposing (..)
+module Main exposing (..)
 
 import Browser exposing (Document)
 import Browser.Navigation as Nav
@@ -8,16 +8,6 @@ import Room exposing (..)
 import Route exposing (Route)
 import Session exposing (Session)
 import Url exposing (Url)
-
-
-
--- PORTS
-
-
-port sendMsg : String -> Cmd msg
-
-
-port handleMsg : (String -> msg) -> Sub msg
 
 
 type Model

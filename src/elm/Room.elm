@@ -1,20 +1,22 @@
-module Room exposing (..)
+port module Room exposing (..)
 
-import Browser exposing (Document)
 import Game.Card exposing (Card)
 import Game.Game as Game
 import Html exposing (Html, button, div, text)
 import Html.Events exposing (onClick)
-import Session exposing (Session)
+import Session exposing (RoomData, Session)
+
+-- PORTS
+port sendMsg : String -> Cmd msg
 
 
+port handleMsg : (String -> msg) -> Sub msg
 
 -- MODEL
 
 
 type alias Model =
     { session : Session
-    , code : String
     , game : Maybe Game.State
     }
 
@@ -22,7 +24,6 @@ type alias Model =
 init : Session -> ( Model, Cmd Msg )
 init session =
     ( { session = session
-      , code = "1234"
       , game = Nothing
       }
     , Cmd.none
@@ -35,7 +36,7 @@ init session =
 
 view : Model -> { title : String, content : Html Msg }
 view model =
-    { title = "Room " ++ model.code
+    { title = "Room "
     , content =
         case model.game of
             Nothing ->

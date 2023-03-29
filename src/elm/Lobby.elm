@@ -1,10 +1,11 @@
 port module Lobby exposing (..)
 
-import Html exposing (Html, a, button, div, hr, img, input, li, text, ul)
+import Html exposing (Html, button, div, img, input, li, text, ul)
 import Html.Attributes exposing (class, placeholder, src, value)
+import Html.Attributes exposing (placeholder, value)
 import Html.Events exposing (onClick, onInput)
 import Route
-import Session exposing (Session)
+import Session exposing (RoomData(..), Session)
 
 
 
@@ -132,4 +133,4 @@ subscriptions _ =
 
 toSession : Model -> Session
 toSession model =
-    model.session
+    Session.setRoomData (RoomData{ isHost = model.isHost, code = Maybe.withDefault "" model.code }) model.session

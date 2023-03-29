@@ -2,18 +2,26 @@ module Session exposing (..)
 
 import Browser.Navigation as Nav
 
+type RoomData = RoomData
+    { isHost : Bool
+    , code : String
+    }
 
-type Session
-    = Connected Nav.Key
+type Session = NotConnected Nav.Key | Connected Nav.Key RoomData
 
 
 create : Nav.Key -> Session
-create =
-    Connected
+create = NotConnected
 
 
 navKey : Session -> Nav.Key
 navKey session =
     case session of
-        Connected key ->
+        NotConnected key ->
             key
+
+        Connected key _ ->
+            key
+
+setRoomData : RoomData -> Session -> Session
+setRoomData data session = Connected (navKey session) data
