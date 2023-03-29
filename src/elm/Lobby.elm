@@ -26,6 +26,7 @@ type alias Model =
     { session : Session
     , isHost : Bool
     , code : Maybe String
+    , hostCode : Maybe String
     }
 
 
@@ -34,6 +35,7 @@ init session =
     ( { session = session
       , isHost = False
       , code = Nothing
+      , hostCode = Nothing
       }
     , Cmd.none
     )
@@ -71,7 +73,7 @@ view model =
                         [ button [ onClick StartGame ] [ text "Start Game" ] ]
                     ]
                 , if model.isHost then
-                    div [] [ text ("Code: " ++ Maybe.withDefault "" model.code) ]
+                    div [] [ text ("Code: " ++ Maybe.withDefault "" model.hostCode) ]
 
                   else
                     input [ placeholder "Code", onInput CodeInput, value (Maybe.withDefault "" model.code) ] []
@@ -89,6 +91,7 @@ type Msg
     | JoinGame
     | StartGame
     | CodeInput String
+    | SetHostCode String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -113,7 +116,9 @@ update msg model =
                     ( model, Cmd.none )
 
         CodeInput code ->
-            ( { model | code = Just code }, Cmd.none )
+            ( { model | code = Just (String.left 4 (String.toUpper code)) }, Cmd.none )
+        SetHostCode code ->
+            ( { model | hostCode = Just code }, Cmd.none )
 
 
 
@@ -123,7 +128,7 @@ update msg model =
 subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
-        [ createRoom CodeInput
+        [ createRoom SetHostCode
         ]
 
 
