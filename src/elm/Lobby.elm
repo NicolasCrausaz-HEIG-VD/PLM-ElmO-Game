@@ -1,4 +1,4 @@
-module Lobby exposing (..)
+port module Lobby exposing (..)
 
 import Html exposing (Html, button, div, input, text)
 import Html.Attributes exposing (placeholder)
@@ -6,7 +6,11 @@ import Html.Events exposing (onClick, onInput)
 import Route
 import Session exposing (Session)
 
+-- PORTS
+port joinRoom : String -> Cmd msg
 
+
+port createRoom : (String -> msg) -> Sub msg
 
 -- MODEL
 
@@ -64,15 +68,19 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         HostGame ->
-            ( { model | isHost = True, code = Just "1234" }, Cmd.none )
+            ( { model | isHost = True }, Cmd.none )
 
         JoinGame ->
-            ( { model | isHost = False, code = Nothing }, Cmd.none )
+            ( { model | isHost = False }, Cmd.none )
 
         StartGame ->
             case model.code of
-                Just code ->
-                    ( model, Route.replaceUrl (Session.navKey model.session) (Route.Room code) )
+                Just code -> case model.isHost of
+                    True ->
+                        ( model, Route.replaceUrl (Session.navKey model.session) (Route.Room code) )
+
+                    False ->
+                        ( model, Cmd.batch [ joinRoom code, Route.replaceUrl (Session.navKey model.session) (Route.Room code) ] )
 
                 Nothing ->
                     ( model, Cmd.none )
@@ -87,7 +95,9 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    Sub.none
+    Sub.batch
+        [ createRoom CodeInput
+        ]
 
 
 

@@ -20,12 +20,6 @@ port sendMsg : String -> Cmd msg
 port handleMsg : (String -> msg) -> Sub msg
 
 
-port joinRoom : String -> Cmd msg
-
-
-port createRoom : (String -> msg) -> Sub msg
-
-
 type Model
     = Redirect Session
     | Room Room.Model
