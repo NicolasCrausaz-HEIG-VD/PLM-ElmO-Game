@@ -3,8 +3,8 @@ module Main exposing (..)
 import Browser exposing (Document)
 import Browser.Navigation as Nav
 import Html exposing (..)
-import Lobby
-import Room exposing (..)
+import Pages.Lobby as Lobby
+import Pages.Room as Room
 import Route exposing (Route)
 import Session exposing (Session)
 import Url exposing (Url)

@@ -1,4 +1,4 @@
-port module Lobby exposing (..)
+port module Pages.Lobby exposing (..)
 
 import Html exposing (Html, button, div, img, input, li, text, ul)
 import Html.Attributes exposing (class, placeholder, src, value)
@@ -14,13 +14,14 @@ import Session exposing (RoomData(..), Session)
 
 port joinRoom : String -> Cmd msg
 
+port joinedRoom : (String -> msg) -> Sub msg
+
+port requestRoomCode : () -> Cmd msg
 
 port createRoom : (String -> msg) -> Sub msg
 
 
-
 -- MODEL
-
 
 type alias Model =
     { session : Session
@@ -37,7 +38,8 @@ init session =
       , code = Nothing
       , hostCode = Nothing
       }
-    , Cmd.none
+    ,
+     Cmd.batch [ requestRoomCode () ]
     )
 
 
@@ -89,6 +91,7 @@ view model =
 type Msg
     = HostGame
     | JoinGame
+    | StartingGame String
     | StartGame
     | CodeInput String
     | SetHostCode String
@@ -107,10 +110,9 @@ update msg model =
             case getRoomCode model of
                 Just code ->
                     if model.isHost then
-                        ( model, Route.replaceUrl (Session.navKey model.session) (Route.Room code) )
-
+                        update (StartingGame code) model
                     else
-                        ( model, Cmd.batch [ joinRoom code, Route.replaceUrl (Session.navKey model.session) (Route.Room code) ] )
+                        ( model, joinRoom code )
 
                 Nothing ->
                     ( model, Cmd.none )
@@ -119,6 +121,8 @@ update msg model =
             ( { model | code = Just (String.left 4 (String.toUpper code)) }, Cmd.none )
         SetHostCode code ->
             ( { model | hostCode = Just code }, Cmd.none )
+        StartingGame code ->
+            ( model, Route.replaceUrl (Session.navKey model.session) (Route.Room code) )
 
 -- HELPERS
 getRoomCode : Model -> Maybe String
@@ -133,9 +137,10 @@ getRoomCode model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
+subscriptions model =
     Sub.batch
         [ createRoom SetHostCode
+        , joinedRoom StartingGame
         ]
 
 

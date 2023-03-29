@@ -4,8 +4,8 @@ declare module "*.elm" {
 
   type Port = {
     [portName: string]: {
-      subscribe?: (handler: (value: any) => void) => void
-      send?: (value: any) => void
+      subscribe?: (handler: (value?: any) => void) => void
+      send?: (value?: any) => void
     }
   }
 

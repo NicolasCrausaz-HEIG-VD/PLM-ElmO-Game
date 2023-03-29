@@ -1,9 +1,10 @@
-port module Room exposing (..)
+port module Pages.Room exposing (..)
 
 import Game.Card exposing (Card)
 import Game.Game as Game
 import Html exposing (Html, button, div, text)
 import Html.Events exposing (onClick)
+import Route
 import Session exposing (RoomData, Session)
 
 -- PORTS
@@ -20,16 +21,16 @@ type alias Model =
     , game : Maybe Game.State
     }
 
+defaultModel : Session -> Model
+defaultModel session =
+    { session = session, game = Nothing }
 
 init : Session -> ( Model, Cmd Msg )
-init session =
-    ( { session = session
-      , game = Nothing
-      }
-    , Cmd.none
-    )
-
-
+init session = case session of
+    Session.Connected _ _ ->
+        ( defaultModel session, Cmd.none )
+    _ -> -- If the session is not connected, redirect to lobby (middleware)
+        ( defaultModel session, Route.replaceUrl (Session.navKey session) (Route.Lobby) )
 
 -- VIEW
 
@@ -42,7 +43,9 @@ view model =
             Nothing ->
                 div []
                     [ button [ onClick StartGame ] [ text "Start Game" ]
+                    , button [ onClick BackLobby ] [ text "Back to Lobby" ]
                     ]
+
 
             Just game ->
                 div []
@@ -56,6 +59,7 @@ view model =
 
 type Msg
     = StartGame
+    | BackLobby
     | CardClicked Card
 
 
@@ -64,6 +68,9 @@ update msg model =
     case msg of
         StartGame ->
             ( { model | game = Just Game.initGame }, Cmd.none )
+
+        BackLobby ->
+            ( model, Route.replaceUrl (Session.navKey model.session) (Route.Lobby) )
 
         CardClicked card ->
             let

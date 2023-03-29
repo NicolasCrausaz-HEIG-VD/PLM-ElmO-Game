@@ -19,12 +19,18 @@ type NetworkEvent<T> = {
   removeConnection: DataConnection;
 }
 
+
+type Middleware = (conn: DataConnection) => boolean;
+type NetworkOptions<T> = {
+  middleware?: (this: Network<T>, conn: DataConnection) => boolean;
+}
+
 export class Network<T> extends Emittery<NetworkEvent<T>> {
   private peer: Peer;
   private connections: DataConnection[] = [];
   private readonly isReady: Promise<void>
 
-  public constructor() {
+  public constructor({middleware}: NetworkOptions<T> = {}) {
     super();
     this.peer = new Peer(generateId());
     this.isReady = new Promise<void>((resolve) => {
@@ -32,15 +38,27 @@ export class Network<T> extends Emittery<NetworkEvent<T>> {
         console.log('Ready', this.peer.id);
         this.peer.on('connection', (conn) => {
           console.log('connection', conn);
-          this.addConnection(conn);
+          const isAllowed = middleware?.call(this, conn) ?? true;
+          if(isAllowed) {
+            this.addConnection(conn);
+          }else{
+            conn.close();
+          }
         });
         resolve();
       });
     });
   }
 
-  public onReady(cb: (code: string) => void) {
-    this.isReady.then(() => cb(parseId(this.peer.id)));
+  public async onReady(): Promise<string>;
+  public async onReady(cb: (code: string) => void): Promise<string>;
+  public async onReady(cb?: (code: string) => void): Promise<string>{
+    await this.isReady;
+    const code = parseId(this.peer.id);
+    if (cb) {
+      cb(code);
+    }
+    return code;
   }
 
   private addConnection(conn: DataConnection) {
@@ -81,6 +99,13 @@ export class Network<T> extends Emittery<NetworkEvent<T>> {
 
   public getConnections() {
     return this.connections;
+  }
+
+  public getPeers() {
+    return [
+      parseId(this.peer.id),
+      ...this.connections.map((conn) => parseId(conn.peer)),
+    ]
   }
 
   public getPeerId() {
