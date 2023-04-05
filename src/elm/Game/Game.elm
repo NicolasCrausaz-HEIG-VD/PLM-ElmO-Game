@@ -80,7 +80,6 @@ shuffle list seed =
 
 -- LOGIC
 
-
 addPlayer : String -> State -> State
 addPlayer name game =
     let
@@ -196,3 +195,7 @@ getCurrentPlayer game =
 
         player :: _ ->
             Just player
+
+getPlayer : String -> State -> Maybe Player
+getPlayer name game =
+    List.Extra.find (\player -> player.name == name) game.players

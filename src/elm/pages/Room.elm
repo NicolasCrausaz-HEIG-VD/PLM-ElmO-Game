@@ -1,12 +1,14 @@
 port module Pages.Room exposing (..)
 
-import Game.Card exposing (Card, toString)
+import Game.Card exposing (Card)
+import Game.CardView as CardView
 import Game.Game as Game
 import Html exposing (Html, button, div, li, p, text, ul)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
+import Random
 import Route
-import Session exposing (RoomData, Session)
+import Session exposing (Session)
 
 
 
@@ -49,10 +51,20 @@ init session =
 -- VIEW
 
 
-printCards : List Card -> Html msg
+printCards : List Card -> Html Msg
 printCards cards =
-    ul []
-        (List.map (\card -> li [] [ text (toString card) ]) cards)
+    div [ class "cards" ]
+        (List.map (\card -> CardView.view [ onClick (CardClicked card) ] { size = "100px", flipped = True } card) cards)
+
+
+printPlayer : Game.Player -> Html Msg
+printPlayer player =
+    div [ class "player" ]
+        [ text player.name
+        , div []
+            [ printCards player.hand
+            ]
+        ]
 
 
 view : Model -> { title : String, content : Html Msg }
@@ -77,10 +89,20 @@ view model =
                     ]
 
             Just game ->
-                div []
-                    [ div []
-                        [ p [] [ text "Game running" ]
-                        ]
+                div [ class "game" ]
+                    [ div [] (List.map printPlayer game.players)
+                    , case Game.getPlayer "Player 1" game of
+                        Just player ->
+                            div [ class "my-player" ] [ printPlayer player ]
+
+                        Nothing ->
+                            div [] []
+                    , case game.activeCard of
+                        Just card ->
+                            printCards [ card ]
+
+                        Nothing ->
+                            div [] []
                     ]
     }
 
@@ -99,7 +121,19 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         StartGame ->
-            ( { model | game = Just Game.initGame }, Cmd.none )
+            ( { model
+                | game =
+                    Just
+                        (Game.initGame
+                            |> Game.shuffleGame (Random.initialSeed 5)
+                            |> Game.addPlayer "Player 1"
+                            |> Game.addPlayer "Player 2"
+                            |> Game.addPlayer "Player 3"
+                            |> Game.getFirstCard
+                        )
+              }
+            , Cmd.none
+            )
 
         BackLobby ->
             ( model, Route.replaceUrl (Session.navKey model.session) Route.Lobby )

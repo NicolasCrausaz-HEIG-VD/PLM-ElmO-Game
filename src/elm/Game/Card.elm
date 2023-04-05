@@ -39,7 +39,7 @@ toString card =
                     "wild"
 
                 DrawFour ->
-                    "draw_four"
+                    "wild_draw_four"
 
 getCardColor : Card -> Maybe Color
 getCardColor card =

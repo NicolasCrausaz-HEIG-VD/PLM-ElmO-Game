@@ -44,3 +44,21 @@
     }
   }
 }
+
+.game {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  .my-player {
+    position: absolute;
+    display: flex;
+    bottom: 0;
+  }
+
+  .player {
+    position: absolute;
+    top: 0;
+  }
+}
