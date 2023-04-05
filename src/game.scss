@@ -54,7 +54,31 @@
   .player-deck {
     position: absolute;
     display: flex;
+    flex-direction: column;
     bottom: 0;
+    & .card {
+      transition: all 0.1s ease;
+      transform-origin: bottom center;
+      margin: 0 -20px;
+      &:hover {
+        margin: 0;
+        transform: scale(2) translateY(-10px);
+        z-index: 100;
+      }
+    }
+  }
+
+  .player {
+    margin: 0 15px;
+    & .card {
+      transition: all 0.1s ease;
+      margin: 0 -15px;
+      &:hover {
+        margin: 0;
+        transform: scale(1.25);
+        z-index: 100;
+      }
+    }
   }
 
   .topbar {

@@ -8,10 +8,21 @@
 }
 
 .card {
+    all: unset;
+    outline: 0 !important;
+    border: 0 !important;
     perspective: 1000px;
     user-select: none;
     height: fit-content;
     width: fit-content;
+
+    &:disabled {
+        cursor: not-allowed;
+        filter: grayscale(1);
+        &:hover {
+            filter: grayscale(0);
+        }
+    }
 
     .card_inner {
         transform-style: preserve-3d;

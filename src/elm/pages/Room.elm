@@ -9,7 +9,8 @@ import Html.Events exposing (onClick)
 import Random
 import Route
 import Session exposing (Session)
-import Game.CardView exposing (CardProps)
+import Html.Attributes exposing (disabled)
+import Game.Card exposing (PlayableCard)
 
 
 
@@ -51,36 +52,30 @@ init session =
 
 -- VIEW
 
-
-printCards : List Card -> CardProps -> Html Msg
-printCards cards props =
-    div [ class "cards" ]
-        (List.map (\card -> CardView.view [ onClick (CardClicked card) ] props card) cards)
-
-
 printPlayer : Game.Player -> Html Msg
 printPlayer player =
     div [ class "player" ]
         [ text player.name
-        , div []
-            [ printCards player.hand { size = "100px", flipped = False }
-            ]
+        , div [class "cards"]
+            (List.map (\card -> CardView.view [] { size = "100px", flipped = False } card) player.hand)
         ]
 
 
-displayPlayerDeck : Game.Player -> Html Msg
-displayPlayerDeck player =
+displayPlayerDeck : Game.State -> Game.Player -> Html Msg
+displayPlayerDeck game player =
     div [ class "player-deck" ]
         [ text player.name
-        , div []
-            [ printCards player.hand { size = "150px", flipped = True } ]
+        , div [ class "cards" ]
+                  (List.map (\card -> CardView.view [ onClick (PlayCard player card), disabled (not (Game.canPlayCard card game)  ) ] { size = "150px", flipped = True } card) player.hand)
         ]
 
 
 displayDrawStack : Game.Draw -> Html Msg
 displayDrawStack stack =
-    div [ class "draw-stack" ]
-        [ printCards stack { size = "150px", flipped = False } ]
+    div [ class "draw-stack", onClick DrawCard ]
+        [ div [ class "cards" ]
+            (List.map (\card -> CardView.view [] { size = "150px", flipped = True } card) stack)
+        ]
 
 
 view : Model -> { title : String, content : Html Msg }
@@ -109,12 +104,12 @@ view model =
                     (Just currentPlayer, otherPlayers) ->
                         div [ class "game" ]
                             [ div [ class "topbar" ] (List.map printPlayer otherPlayers)
-                            , displayPlayerDeck currentPlayer
+                            , displayPlayerDeck game currentPlayer
                             , div [ class "center" ]
                                 [ displayDrawStack (List.take 3 game.drawStack)
                                 , case game.activeCard of
                                     Just card ->
-                                        printCards [ card ] { size = "200px", flipped = True }
+                                        CardView.view [] { size = "300px", flipped = True } card
 
                                     Nothing ->
                                         div [] []
@@ -132,7 +127,8 @@ view model =
 type Msg
     = StartGame
     | BackLobby
-    | CardClicked Card
+    | PlayCard Game.Player Card
+    | DrawCard
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -156,12 +152,21 @@ update msg model =
         BackLobby ->
             ( model, Route.replaceUrl (Session.navKey model.session) Route.Lobby )
 
-        CardClicked card ->
+        PlayCard player card -> 
             let
-                _ =
-                    Debug.log "CardClicked" card
+                playableCard = Game.Card.makePlayableCard card
             in
-            ( model, Cmd.none )
+                ( { model
+                    | game = Maybe.map (\game -> (Game.playerPlayCard player playableCard game) |> Tuple.first) model.game
+                }
+                , Cmd.none
+                )
+        
+
+        DrawCard -> ( {
+            model
+                | game = Maybe.map Game.drawCard model.game
+            }, Cmd.none )
 
 
 

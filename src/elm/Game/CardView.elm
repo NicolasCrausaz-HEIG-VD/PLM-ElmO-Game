@@ -3,6 +3,7 @@ module Game.CardView exposing (..)
 import Game.Card as Card exposing (Card)
 import Html exposing (Attribute, Html, div, img)
 import Html.Attributes exposing (class, classList, src, style)
+import Html exposing (button)
 
 
 type alias CardProps =
@@ -17,7 +18,7 @@ type alias CardProps =
 
 view : List (Attribute msg) -> CardProps -> Card -> Html msg
 view attributes { size, flipped } card =
-    div
+    button
         (attributes ++ [ class "card", classList [ ( "active", flipped ) ] ])
         [ div
             [ class "card_inner" ]

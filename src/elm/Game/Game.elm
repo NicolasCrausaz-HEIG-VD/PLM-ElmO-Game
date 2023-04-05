@@ -122,33 +122,35 @@ nextTurn game =
 
 
 canPlayCard : Card -> State -> Bool
-canPlayCard card game =
-    case ( card, game.activeColor, game.activeCard ) of
-        ( NumberCard number color, Just activeColor, Just (NumberCard activeNumber _) ) ->
-            color == activeColor || number == activeNumber
+canPlayCard playedCard game =
+    case (playedCard, game.activeColor, game.activeCard) of
+        (WildCard _, _, _) -> True
 
-        ( DrawCard color, Just activeColor, Just (DrawCard _) ) ->
-            color == activeColor
+        (NumberCard number color, Just activeColor, Just activeCard) ->
+            case activeCard of
+                NumberCard activeNumber _ ->
+                    number == activeNumber || color == activeColor
 
-        ( SkipCard color, Just activeColor, Just (SkipCard _) ) ->
-            color == activeColor
+                _ ->
+                    color == activeColor
 
-        ( ReverseCard color, Just activeColor, Just (ReverseCard _) ) ->
-            color == activeColor
+        (DrawCard color, Just activeColor, Just activeCard) ->
+            activeCard == DrawCard activeColor || color == activeColor
 
-        ( WildCard _, _, _ ) ->
-            True
+        (SkipCard color, Just activeColor, Just activeCard) ->
+            activeCard == SkipCard activeColor || color == activeColor
+
+        (ReverseCard color, Just activeColor, Just activeCard) ->
+            activeCard == ReverseCard activeColor || color == activeColor
 
         _ ->
             False
 
 
-handleCardPlay : PlayableCard -> State -> (State, Bool)
-handleCardPlay playableCard game =
+playCard : PlayableCard -> State -> (State, Bool)
+playCard playableCard game =
     let
-        activeCard = case playableCard of
-            StandardCard card -> card
-            ChoiceCard card _ -> card
+        activeCard = Game.Card.getCard playableCard
 
         activeColor = case playableCard of
             StandardCard card -> getCardColor card
@@ -158,6 +160,19 @@ handleCardPlay playableCard game =
             ({ game | activeCard = Just activeCard, activeColor = activeColor }, True)
         else
             (game, False)
+playerPlayCard : Player -> PlayableCard -> State -> (State, Bool)
+playerPlayCard player playableCard game =
+    let
+        (newState, success) =
+            playCard playableCard game
+
+        newPlayer =
+            { player | hand = List.Extra.remove (Game.Card.getCard playableCard) player.hand }
+    in
+    if success then
+        ({ newState | players = newPlayer :: newState.players }, True)
+    else
+        (game, False)
 
 nextPlayer : List Player -> List Player
 nextPlayer players =
@@ -183,10 +198,6 @@ shuffleGame seed game =
     { game | drawStack = shuffle game.drawStack seed }
 
 
-
--- Return the current player or Nothing if no player is playing
-
-
 getCurrentPlayer : State -> Maybe Player
 getCurrentPlayer game =
     case game.players of
@@ -203,3 +214,22 @@ getPlayer name game =
             List.partition (\player -> player.name == name) game.players
     in
     (List.head matchingPlayer, remainingPlayers)
+
+
+
+drawCard : State -> State
+drawCard game =
+    case game.drawStack of
+        [] ->
+            game
+
+        card :: rest ->
+            case getCurrentPlayer game of
+                Nothing ->
+                    game
+
+                Just player ->
+                    { game
+                        | players = { player | hand = player.hand ++ [ card ] } :: game.players
+                        , drawStack = rest
+                    }

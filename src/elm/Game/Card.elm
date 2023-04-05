@@ -18,6 +18,24 @@ type PlayableCard
     = StandardCard Card
     | ChoiceCard Card Color
 
+getCard : PlayableCard -> Card
+getCard playableCard =
+    case playableCard of
+        StandardCard card ->
+            card
+
+        ChoiceCard card _ ->
+            card
+
+makePlayableCard : Card -> PlayableCard
+makePlayableCard card =
+    case card of
+        WildCard _ ->
+            ChoiceCard card Color.Red
+
+        _ ->
+            StandardCard card
+
 toString : Card -> String
 toString card =
     case card of
