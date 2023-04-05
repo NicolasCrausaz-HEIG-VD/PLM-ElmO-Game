@@ -14,11 +14,10 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
   },
   "include": [
     "src",
-    "node_modules/.pnpm/@types+elm@0.19.1/node_modules/@types/elm/index.d.ts"
+    "node_modules/**/*.d.ts"
   ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
