@@ -1,0 +1,66 @@
+.lobby-menu {
+  border-radius: 30px;
+  margin: auto;
+  border: 1px solid;
+  padding: 15px;
+  background-color: white;
+
+  .content {
+    background-color: black;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-radius: 20px;
+    padding: 20px;
+  }
+
+  &:hover {
+    box-shadow: 0px 0px 20px #e80000;
+  }
+
+  img {
+    width: 400px;
+    margin: 10px;
+  }
+
+  .title {
+    font-size: 40px;
+    color: white;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 30px;
+  }
+
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+
+
+    li {
+      margin: 10px;
+      cursor: pointer;
+    }
+  }
+}
+
+.game {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  .my-player {
+    display: flex;
+  }
+
+  .players {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin-top: 20px;
+  }
+}
