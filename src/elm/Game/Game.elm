@@ -1,6 +1,6 @@
 module Game.Game exposing (..)
 
-import Game.Card exposing (Card(..))
+import Game.Card exposing (Card(..), PlayableCard(..), WildCardType(..), getCardColor)
 import Game.Color exposing (Color(..))
 import List.Extra
 import Random
@@ -68,8 +68,8 @@ allCards =
         ++ List.concatMap (\color -> List.map (\_ -> DrawCard color) (List.range 1 drawCards)) colors
         ++ List.concatMap (\color -> List.map (\_ -> SkipCard color) (List.range 1 skipCards)) colors
         ++ List.concatMap (\color -> List.map (\_ -> ReverseCard color) (List.range 1 reverseCards)) colors
-        ++ List.map (\_ -> WildDrawCard) (List.range 1 wildDrawCards)
-        ++ List.map (\_ -> WildCard) (List.range 1 wildCards)
+        ++ List.map (\_ -> WildCard DrawFour) (List.range 1 wildDrawCards)
+        ++ List.map (\_ -> WildCard Standard) (List.range 1 wildCards)
 
 
 shuffle : List e -> Random.Seed -> List e
@@ -122,27 +122,43 @@ nextTurn game =
     { game | players = nextPlayer game.players }
 
 
-handleCardPlay : Card -> State -> State
-handleCardPlay card game =
-    case card of
-        NumberCard _ color ->
-            { game | activeCard = Just card, activeColor = Just color }
+canPlayCard : Card -> State -> Bool
+canPlayCard card game =
+    case ( card, game.activeColor, game.activeCard ) of
+        ( NumberCard number color, Just activeColor, Just (NumberCard activeNumber _) ) ->
+            color == activeColor || number == activeNumber
 
-        DrawCard color ->
-            { game | activeCard = Just card, activeColor = Just color }
+        ( DrawCard color, Just activeColor, Just (DrawCard _) ) ->
+            color == activeColor
 
-        ReverseCard color ->
-            { game | activeCard = Just card, activeColor = Just color }
+        ( SkipCard color, Just activeColor, Just (SkipCard _) ) ->
+            color == activeColor
 
-        SkipCard color ->
-            { game | activeCard = Just card, activeColor = Just color }
+        ( ReverseCard color, Just activeColor, Just (ReverseCard _) ) ->
+            color == activeColor
 
-        WildCard ->
-            { game | activeCard = Just card, activeColor = Nothing }
+        ( WildCard _, _, _ ) ->
+            True
 
-        WildDrawCard ->
-            { game | activeCard = Just card, activeColor = Nothing }
+        _ ->
+            False
 
+
+handleCardPlay : PlayableCard -> State -> (State, Bool)
+handleCardPlay playableCard game =
+    let
+        activeCard = case playableCard of
+            StandardCard card -> card
+            ChoiceCard card _ -> card
+
+        activeColor = case playableCard of
+            StandardCard card -> getCardColor card
+            ChoiceCard _ color -> Just color
+    in
+        if canPlayCard activeCard game then
+            ({ game | activeCard = Just activeCard, activeColor = activeColor }, True)
+        else
+            (game, False)
 
 nextPlayer : List Player -> List Player
 nextPlayer players =

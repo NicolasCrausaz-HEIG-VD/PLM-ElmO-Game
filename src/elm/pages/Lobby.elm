@@ -51,15 +51,6 @@ view : Model -> { title : String, content : Html Msg }
 view model =
     { title = "Lobby"
     , content =
-        -- div []
-        --     [ button [ onClick HostGame ] [ text "Host Game" ]
-        --     , button [ onClick JoinGame ] [ text "Join Game" ]
-        --     , button [ onClick StartGame ] [ text "Start Game" ]
-        --     , if model.isHost then
-        --         div [] [ text ("Code: " ++ Maybe.withDefault "" model.code) ]
-        --       else
-        --         input [ placeholder "Code", onInput CodeInput ] []
-        --     ]
         div [ class "lobby-menu" ]
             [ div [ class "content" ]
                 [ img [ src "/logo.svg" ] []
