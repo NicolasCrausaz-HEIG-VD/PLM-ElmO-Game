@@ -196,6 +196,10 @@ getCurrentPlayer game =
         player :: _ ->
             Just player
 
-getPlayer : String -> State -> Maybe Player
+getPlayer : String -> State -> (Maybe Player, List Player)
 getPlayer name game =
-    List.Extra.find (\player -> player.name == name) game.players
+    let
+        (matchingPlayer, remainingPlayers) =
+            List.partition (\player -> player.name == name) game.players
+    in
+    (List.head matchingPlayer, remainingPlayers)
