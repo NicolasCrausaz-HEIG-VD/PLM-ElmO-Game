@@ -51,10 +51,10 @@ init session =
 -- VIEW
 
 
-printCards : List Card -> Html Msg
-printCards cards =
+printCards : List Card -> Bool -> Html Msg
+printCards cards flipped =
     div [ class "cards" ]
-        (List.map (\card -> CardView.view [ onClick (CardClicked card) ] { size = "100px", flipped = True } card) cards)
+        (List.map (\card -> CardView.view [ onClick (CardClicked card) ] { size = "100px", flipped = flipped } card) cards)
 
 
 printPlayer : Game.Player -> Html Msg
@@ -62,9 +62,29 @@ printPlayer player =
     div [ class "player" ]
         [ text player.name
         , div []
-            [ printCards player.hand
+            [ printCards player.hand False
             ]
         ]
+
+
+displayPlayerDeck : Game.Player -> Html Msg
+displayPlayerDeck player =
+    div [ class "player-deck" ]
+        [ text player.name
+        , div []
+            [ printCards player.hand True ]
+        ]
+
+
+displayDrawStack : Game.Draw -> Html Msg
+displayDrawStack stack =
+    div [ class "draw-stack" ]
+        [ printCards stack False ]
+
+
+otherPlayers : List Game.Player -> Game.Player -> List Game.Player
+otherPlayers players player =
+    List.filter (\p -> p.name /= player.name) players
 
 
 view : Model -> { title : String, content : Html Msg }
@@ -90,19 +110,22 @@ view model =
 
             Just game ->
                 div [ class "game" ]
-                    [ div [] (List.map printPlayer game.players)
+                    [ div [ class "topbar" ] (List.map printPlayer (otherPlayers game.players (Game.getPlayer "Player 1" game |> Maybe.withDefault { name = "", hand = [] })))
                     , case Game.getPlayer "Player 1" game of
                         Just player ->
-                            div [ class "my-player" ] [ printPlayer player ]
+                            displayPlayerDeck player
 
                         Nothing ->
                             div [] []
-                    , case game.activeCard of
-                        Just card ->
-                            printCards [ card ]
+                    , div [ class "center" ]
+                        [ displayDrawStack (List.take 3 game.drawStack)
+                        , case game.activeCard of
+                            Just card ->
+                                printCards [ card ] True
 
-                        Nothing ->
-                            div [] []
+                            Nothing ->
+                                div [] []
+                        ]
                     ]
     }
 
