@@ -2,9 +2,11 @@ module Game.Card exposing (..)
 
 import Game.Color as Color exposing (Color)
 
+
 type WildCardType
     = Standard
     | DrawFour
+
 
 type Card
     = NumberCard Int Color
@@ -13,10 +15,15 @@ type Card
     | ReverseCard Color
     | WildCard WildCardType
 
+
+
 -- Card with player choice of color
+
+
 type PlayableCard
     = StandardCard Card
     | ChoiceCard Card Color
+
 
 getCard : PlayableCard -> Card
 getCard playableCard =
@@ -27,6 +34,7 @@ getCard playableCard =
         ChoiceCard card _ ->
             card
 
+
 makePlayableCard : Card -> PlayableCard
 makePlayableCard card =
     case card of
@@ -35,6 +43,7 @@ makePlayableCard card =
 
         _ ->
             StandardCard card
+
 
 toString : Card -> String
 toString card =
@@ -58,6 +67,7 @@ toString card =
 
                 DrawFour ->
                     "wild_draw_four"
+
 
 getCardColor : Card -> Maybe Color
 getCardColor card =

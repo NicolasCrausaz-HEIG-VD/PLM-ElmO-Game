@@ -1,9 +1,8 @@
 module Game.CardView exposing (..)
 
 import Game.Card as Card exposing (Card)
-import Html exposing (Attribute, Html, div, img)
+import Html exposing (Attribute, Html, button, div, img)
 import Html.Attributes exposing (class, classList, src, style)
-import Html exposing (button)
 
 
 type alias CardProps =

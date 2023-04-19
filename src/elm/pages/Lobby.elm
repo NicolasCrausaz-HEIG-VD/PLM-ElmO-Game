@@ -2,7 +2,6 @@ port module Pages.Lobby exposing (..)
 
 import Html exposing (Html, button, div, img, input, li, text, ul)
 import Html.Attributes exposing (class, placeholder, src, value)
-import Html.Attributes exposing (placeholder, value)
 import Html.Events exposing (onClick, onInput)
 import Route
 import Session exposing (RoomData(..), Session)
@@ -14,14 +13,19 @@ import Session exposing (RoomData(..), Session)
 
 port joinRoom : String -> Cmd msg
 
+
 port joinedRoom : (String -> msg) -> Sub msg
 
+
 port requestRoomCode : () -> Cmd msg
+
 
 port createRoom : (String -> msg) -> Sub msg
 
 
+
 -- MODEL
+
 
 type alias Model =
     { session : Session
@@ -38,8 +42,7 @@ init session =
       , code = Nothing
       , hostCode = Nothing
       }
-    ,
-     Cmd.batch [ requestRoomCode () ]
+    , Cmd.batch [ requestRoomCode () ]
     )
 
 
@@ -102,6 +105,7 @@ update msg model =
                 Just code ->
                     if model.isHost then
                         update (StartingGame code) model
+
                     else
                         ( model, joinRoom code )
 
@@ -110,18 +114,26 @@ update msg model =
 
         CodeInput code ->
             ( { model | code = Just (String.left 4 (String.toUpper code)) }, Cmd.none )
+
         SetHostCode code ->
             ( { model | hostCode = Just code }, Cmd.none )
+
         StartingGame code ->
             ( model, Route.replaceUrl (Session.navKey model.session) (Route.Room code) )
 
+
+
 -- HELPERS
+
+
 getRoomCode : Model -> Maybe String
 getRoomCode model =
     if model.isHost then
         model.hostCode
+
     else
         model.code
+
 
 
 -- SUBSCRIPTIONS
@@ -141,4 +153,4 @@ subscriptions model =
 
 toSession : Model -> Session
 toSession model =
-    Session.setRoomData (RoomData{ isHost = model.isHost, code = Maybe.withDefault "" (getRoomCode model) }) model.session
+    Session.setRoomData (RoomData { isHost = model.isHost, code = Maybe.withDefault "" (getRoomCode model) }) model.session

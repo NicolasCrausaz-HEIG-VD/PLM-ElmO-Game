@@ -37,7 +37,7 @@ routeToPieces : Route -> List String
 routeToPieces route =
     case route of
         Lobby ->
-            [ ]
+            []
 
         Room code ->
             [ "room", code ]

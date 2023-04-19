@@ -42,34 +42,30 @@ allCards =
         numbers =
             0 :: List.concatMap (\_ -> List.range 1 9) (List.range 1 2)
 
-        -- one 0 and 2 of each number 1-9
+        createCards n f =
+            List.concatMap (\color -> List.map (\_ -> f color) (List.range 1 n)) colors
+
         drawCards =
-            2
+            createCards 2 DrawCard
 
-        -- 2 for each color
         skipCards =
-            2
+            createCards 2 SkipCard
 
-        -- 2 for each color
         reverseCards =
-            2
+            createCards 2 ReverseCard
 
-        -- 2 for each color
-        wildCards =
-            4
-
-        -- 4 wild cards
         wildDrawCards =
-            4
+            List.repeat 4 (WildCard DrawFour)
 
-        -- 4 wild draw cards
+        wildCards =
+            List.repeat 4 (WildCard Standard)
     in
     List.concatMap (\color -> List.map (\number -> NumberCard number color) numbers) colors
-        ++ List.concatMap (\color -> List.map (\_ -> DrawCard color) (List.range 1 drawCards)) colors
-        ++ List.concatMap (\color -> List.map (\_ -> SkipCard color) (List.range 1 skipCards)) colors
-        ++ List.concatMap (\color -> List.map (\_ -> ReverseCard color) (List.range 1 reverseCards)) colors
-        ++ List.map (\_ -> WildCard DrawFour) (List.range 1 wildDrawCards)
-        ++ List.map (\_ -> WildCard Standard) (List.range 1 wildCards)
+        ++ drawCards
+        ++ skipCards
+        ++ reverseCards
+        ++ wildDrawCards
+        ++ wildCards
 
 
 shuffle : List e -> Random.Seed -> List e
@@ -79,6 +75,7 @@ shuffle list seed =
 
 
 -- LOGIC
+
 
 addPlayer : String -> State -> State
 addPlayer name game =
@@ -123,10 +120,11 @@ nextTurn game =
 
 canPlayCard : Card -> State -> Bool
 canPlayCard playedCard game =
-    case (playedCard, game.activeColor, game.activeCard) of
-        (WildCard _, _, _) -> True
+    case ( playedCard, game.activeColor, game.activeCard ) of
+        ( WildCard _, _, _ ) ->
+            True
 
-        (NumberCard number color, Just activeColor, Just activeCard) ->
+        ( NumberCard number color, Just activeColor, Just activeCard ) ->
             case activeCard of
                 NumberCard activeNumber _ ->
                     number == activeNumber || color == activeColor
@@ -134,45 +132,68 @@ canPlayCard playedCard game =
                 _ ->
                     color == activeColor
 
-        (DrawCard color, Just activeColor, Just activeCard) ->
+        ( DrawCard color, Just activeColor, Just activeCard ) ->
             activeCard == DrawCard activeColor || color == activeColor
 
-        (SkipCard color, Just activeColor, Just activeCard) ->
+        ( SkipCard color, Just activeColor, Just activeCard ) ->
             activeCard == SkipCard activeColor || color == activeColor
 
-        (ReverseCard color, Just activeColor, Just activeCard) ->
+        ( ReverseCard color, Just activeColor, Just activeCard ) ->
             activeCard == ReverseCard activeColor || color == activeColor
 
         _ ->
             False
 
 
-playCard : PlayableCard -> State -> (State, Bool)
+playCard : PlayableCard -> State -> ( State, Bool )
 playCard playableCard game =
     let
-        activeCard = Game.Card.getCard playableCard
+        activeCard =
+            Game.Card.getCard playableCard
 
-        activeColor = case playableCard of
-            StandardCard card -> getCardColor card
-            ChoiceCard _ color -> Just color
+        activeColor =
+            case playableCard of
+                StandardCard card ->
+                    getCardColor card
+
+                ChoiceCard _ color ->
+                    Just color
     in
-        if canPlayCard activeCard game then
-            ({ game | activeCard = Just activeCard, activeColor = activeColor }, True)
-        else
-            (game, False)
-playerPlayCard : Player -> PlayableCard -> State -> (State, Bool)
+    if canPlayCard activeCard game then
+        ( { game | activeCard = Just activeCard, activeColor = activeColor }, True )
+
+    else
+        ( game, False )
+
+
+updatePlayer : Player -> List Player -> List Player
+updatePlayer updatedPlayer players =
+    List.map
+        (\player ->
+            if player.name == updatedPlayer.name then
+                updatedPlayer
+
+            else
+                player
+        )
+        players
+
+
+playerPlayCard : Player -> PlayableCard -> State -> ( State, Bool )
 playerPlayCard player playableCard game =
     let
-        (newState, success) =
+        ( newState, success ) =
             playCard playableCard game
 
         newPlayer =
             { player | hand = List.Extra.remove (Game.Card.getCard playableCard) player.hand }
     in
     if success then
-        ({ newState | players = newPlayer :: newState.players }, True)
+        ( { newState | players = updatePlayer newPlayer newState.players }, True )
+
     else
-        (game, False)
+        ( game, False )
+
 
 nextPlayer : List Player -> List Player
 nextPlayer players =
@@ -198,23 +219,23 @@ shuffleGame seed game =
     { game | drawStack = shuffle game.drawStack seed }
 
 
-getCurrentPlayer : State -> Maybe Player
+getCurrentPlayer : State -> ( Maybe Player, List Player )
 getCurrentPlayer game =
     case game.players of
         [] ->
-            Nothing
+            ( Nothing, [] )
 
-        player :: _ ->
-            Just player
+        currentPlayer :: remainingPlayers ->
+            ( Just currentPlayer, remainingPlayers )
 
-getPlayer : String -> State -> (Maybe Player, List Player)
+
+getPlayer : String -> State -> ( Maybe Player, List Player )
 getPlayer name game =
     let
-        (matchingPlayer, remainingPlayers) =
+        ( matchingPlayer, remainingPlayers ) =
             List.partition (\player -> player.name == name) game.players
     in
-    (List.head matchingPlayer, remainingPlayers)
-
+    ( List.head matchingPlayer, remainingPlayers )
 
 
 drawCard : State -> State
@@ -224,12 +245,16 @@ drawCard game =
             game
 
         card :: rest ->
-            case getCurrentPlayer game of
+            let
+                ( currentPlayer, remainingPlayers ) =
+                    getCurrentPlayer game
+            in
+            case currentPlayer of
                 Nothing ->
                     game
 
                 Just player ->
                     { game
-                        | players = { player | hand = player.hand ++ [ card ] } :: game.players
+                        | players = { player | hand = player.hand ++ [ card ] } :: remainingPlayers
                         , drawStack = rest
                     }

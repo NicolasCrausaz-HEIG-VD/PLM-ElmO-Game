@@ -14,18 +14,18 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "elm-format": "0.8.6",
+    "elm-format": "0.8.7",
     "emittery": "^1.0.1",
     "peerjs": "^1.4.7",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "sass": "^1.60.0"
+    "sass": "^1.62.0"
   },
   "devDependencies": {
     "@types/elm": "^0.19.1",
     "elm": "0.19.1-5",
-    "typescript": "^5.0.3",
-    "vite": "^4.2.1",
+    "typescript": "^5.0.4",
+    "vite": "^4.2.2",
     "vite-plugin-elm": "2.8.0-beta.4"
   }
 }
