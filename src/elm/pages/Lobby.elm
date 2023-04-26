@@ -140,7 +140,7 @@ getRoomCode model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.batch
         [ createRoom SetHostCode
         , joinedRoom StartingGame

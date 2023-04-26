@@ -1,6 +1,6 @@
 module Game.Game exposing (..)
 
-import Game.Card exposing (Card(..), PlayableCard(..), WildCardType(..), getCardColor)
+import Game.Card exposing (Card(..), PlayableCard(..), WildCardType(..))
 import Game.Color exposing (Color(..))
 import List.Extra
 import Random
@@ -110,9 +110,6 @@ getFirstCard game =
 
 
 
--- Return a game for the next turn
-
-
 nextTurn : State -> State
 nextTurn game =
     { game | players = nextPlayer game.players }
@@ -150,17 +147,15 @@ playCard playableCard game =
     let
         activeCard =
             Game.Card.getCard playableCard
-
-        activeColor =
-            case playableCard of
-                StandardCard card ->
-                    getCardColor card
-
-                ChoiceCard _ color ->
-                    Just color
     in
     if canPlayCard activeCard game then
-        ( { game | activeCard = Just activeCard, activeColor = activeColor }, True )
+        ( { game
+            | activeCard = Just activeCard
+            , activeColor = Game.Card.getPlayableCardColor playableCard
+            , drawStack = addCardToDrawStack game.activeCard game.drawStack
+          }
+        , True
+        )
 
     else
         ( game, False )
@@ -258,3 +253,13 @@ drawCard game =
                         | players = { player | hand = player.hand ++ [ card ] } :: remainingPlayers
                         , drawStack = rest
                     }
+
+
+addCardToDrawStack : Maybe Card -> Draw -> Draw
+addCardToDrawStack cardToAdd drawStack =
+    case cardToAdd of
+        Nothing ->
+            drawStack
+
+        Just card ->
+            drawStack ++ [ card ]

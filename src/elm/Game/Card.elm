@@ -86,3 +86,13 @@ getCardColor card =
 
         _ ->
             Nothing
+
+
+getPlayableCardColor : PlayableCard -> Maybe Color
+getPlayableCardColor playableCard =
+    case playableCard of
+        StandardCard card ->
+            getCardColor card
+
+        ChoiceCard _ color ->
+            Just color
