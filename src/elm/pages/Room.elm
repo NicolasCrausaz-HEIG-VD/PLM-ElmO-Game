@@ -1,14 +1,16 @@
 port module Pages.Room exposing (..)
 
-import Game.Card exposing (Card)
-import Game.CardView as CardView
+import Game.Card exposing (Card(..), PlayableCard(..))
+import Game.Color
 import Game.Game as Game
 import Html exposing (Html, button, div, li, text, ul)
 import Html.Attributes exposing (class, disabled)
 import Html.Events exposing (onClick)
+import Json.Decode exposing (Error(..))
 import Random
 import Route
 import Session exposing (Session)
+import Game.CardView
 
 
 
@@ -25,15 +27,21 @@ port handleMsg : (String -> msg) -> Sub msg
 -- MODEL
 
 
+type State
+    = Idle
+    | Choice Game.Player Card
+
+
 type alias Model =
     { session : Session
     , game : Maybe Game.State
+    , state : State
     }
 
 
 defaultModel : Session -> Model
 defaultModel session =
-    { session = session, game = Nothing }
+    { session = session, game = Nothing, state = Idle }
 
 
 init : Session -> ( Model, Cmd Msg )
@@ -56,7 +64,7 @@ printPlayer player =
     div [ class "player" ]
         [ text player.name
         , div [ class "cards" ]
-            (List.map (\card -> CardView.view [] { size = "100px", flipped = False } card) player.hand)
+            (List.map (\card -> Game.CardView.view [] { size = "100px", flipped = False } card) player.hand)
         ]
 
 
@@ -65,7 +73,7 @@ displayPlayerDeck game player =
     div [ class "player-deck" ]
         [ text player.name
         , div [ class "cards" ]
-            (List.map (\card -> CardView.view [ onClick (PlayCard player card), disabled (not (Game.canPlayCard card game)) ] { size = "150px", flipped = True } card) player.hand)
+            (List.map (\card -> Game.CardView.view [ onClick (PlayCard player card), disabled (not (Game.canPlayCard card game)) ] { size = "150px", flipped = True } card) player.hand)
         ]
 
 
@@ -73,69 +81,8 @@ displayDrawStack : Game.Draw -> Html Msg
 displayDrawStack stack =
     div [ class "draw-stack", onClick DrawCard ]
         [ div [ class "cards" ]
-            (List.map (\card -> CardView.view [] { size = "150px", flipped = True } card) stack)
+            (List.map (\card -> Game.CardView.view [] { size = "150px", flipped = False } card) stack)
         ]
-
-
-
--- VIEW HELPER FUNCTIONS
-
-
-viewGame : Game.State -> Html Msg
-viewGame game =
-    case Game.getCurrentPlayer game of
-        ( Just currentPlayer, otherPlayers ) ->
-            div [ class "game" ]
-                [ div [ class "topbar" ] (List.map printPlayer otherPlayers)
-                , displayPlayerDeck game currentPlayer
-                , div [ class "center" ]
-                    [ displayDrawStack (List.take 3 game.drawStack)
-                    , case game.activeCard of
-                        Just card ->
-                            CardView.view [] { size = "300px", flipped = True } card
-
-                        Nothing ->
-                            div [] []
-                    ]
-                ]
-
-        ( Nothing, _ ) ->
-            div [] []
-
-
-viewLobby : Model -> Html Msg
-viewLobby _ =
-    div [ class "lobby-menu" ]
-        [ div [ class "content" ]
-            [ div [ class "title" ] [ text "Lobby" ]
-            , div [ class "subtitle" ] [ text "Players: todo" ]
-            , ul []
-                [ li
-                    [ class "active"
-                    ]
-                    [ button [ onClick StartGame ] [ text "Start Game" ] ]
-                , li []
-                    [ button [ onClick BackLobby ] [ text "Back to Lobby" ] ]
-                ]
-            ]
-        ]
-
-
-
--- VIEW
-
-
-view : Model -> { title : String, content : Html Msg }
-view model =
-    { title = "Room"
-    , content =
-        case model.game of
-            Nothing ->
-                viewLobby model
-
-            Just game ->
-                viewGame game
-    }
 
 
 
@@ -146,30 +93,46 @@ type Msg
     = StartGame
     | BackLobby
     | PlayCard Game.Player Card
+    | PlayPlayableCard Game.Player PlayableCard
     | DrawCard
     | NextTurn
 
 
-updateGame : Msg -> Game.State -> ( Game.State, Cmd Msg )
-updateGame msg game =
-    case msg of
-        PlayCard player card ->
-            let
-                playableCard =
-                    Game.Card.makePlayableCard card
-            in
-            ( Game.playerPlayCard player playableCard game |> Tuple.first |> Game.nextTurn
-            , Cmd.none
-            )
+playCard : Game.Player -> PlayableCard -> Game.State -> Game.State
+playCard player playableCard game =
+    Game.playerPlayCard player playableCard game
+        |> Tuple.first
+        |> Game.nextTurn
+        |> Game.applyCardEffect (Game.Card.getCard playableCard)
 
-        DrawCard ->
-            ( Game.drawCard game |> Game.nextTurn, Cmd.none )
 
-        NextTurn ->
-            ( Game.nextTurn game, Cmd.none )
+playOrChoiceCard : Game.Player -> Card -> Game.State -> Model -> Model
+playOrChoiceCard player card game model =
+    case card of
+        WildCard _ ->
+            { model | state = Choice player card }
 
         _ ->
-            ( game, Cmd.none )
+            { model | game = Just (playCard player (StandardCard card) game) }
+
+
+updateGame : Msg -> Game.State -> Model -> ( Model, Cmd Msg )
+updateGame msg game model =
+    case msg of
+        PlayCard player card ->
+            ( playOrChoiceCard player card game model, Cmd.none )
+
+        PlayPlayableCard player playableCard ->
+            ( { model | game = Just (playCard player playableCard game), state = Idle }, Cmd.none )
+
+        DrawCard ->
+            ( { model | game = Just (Game.drawCard game |> Game.nextTurn) }, Cmd.none )
+
+        NextTurn ->
+            ( { model | game = Just (Game.nextTurn game) }, Cmd.none )
+
+        _ ->
+            ( model, Cmd.none )
 
 
 updateNoGame : Msg -> Model -> ( Model, Cmd Msg )
@@ -204,11 +167,99 @@ update msg model =
             updateNoGame msg model
 
         Just game ->
-            let
-                ( newGame, cmd ) =
-                    updateGame msg game
-            in
-            ( { model | game = Just newGame }, cmd )
+            updateGame msg game model
+
+
+
+-- VIEW HELPER FUNCTIONS
+
+viewGame : Game.State -> Html Msg
+viewGame game =
+    case Game.getCurrentPlayer game of
+        ( Just currentPlayer, otherPlayers ) ->
+            div [ class "game" ]
+                [ div [ class "topbar" ] (List.map printPlayer otherPlayers)
+                , displayPlayerDeck game currentPlayer
+                , div [ class "center" ]
+                    [ displayDrawStack (List.take 3 game.drawStack)
+                    , case game.activeCard of
+                        Just card ->
+                            Game.CardView.view [] { size = "300px", flipped = True } card
+
+                        Nothing ->
+                            div [] []
+                    ]
+                ]
+
+        ( Nothing, _ ) ->
+            div [] []
+
+
+viewLobby : Model -> Html Msg
+viewLobby _ =
+    div [ class "lobby-menu" ]
+        [ div [ class "content" ]
+            [ div [ class "title" ] [ text "Lobby" ]
+            , div [ class "subtitle" ] [ text "Players: todo" ]
+            , ul []
+                [ li
+                    [ class "active"
+                    ]
+                    [ button [ onClick StartGame ] [ text "Start Game" ] ]
+                , li []
+                    [ button [ onClick BackLobby ] [ text "Back to Lobby" ] ]
+                ]
+            ]
+        ]
+
+
+viewChoice : Game.Player -> Card -> Game.State -> Html Msg
+viewChoice player card _ =
+    div [ class "choice-modal" ]
+        [ div [ class "content" ]
+            [ div [ class "title" ] [ text "Choose a color" ]
+            , ul []
+                [ li
+                    [ class "active"
+                    ]
+                    [ button [ onClick (PlayPlayableCard player (ChoiceCard card Game.Color.Red)) ] [ text "Red" ] ]
+                , li
+                    [ class "active"
+                    ]
+                    [ button [ onClick (PlayPlayableCard player (ChoiceCard card Game.Color.Blue)) ] [ text "Blue" ] ]
+                , li
+                    [ class "active"
+                    ]
+                    [ button [ onClick (PlayPlayableCard player (ChoiceCard card Game.Color.Green)) ] [ text "Green" ] ]
+                , li
+                    [ class "active"
+                    ]
+                    [ button [ onClick (PlayPlayableCard player (ChoiceCard card Game.Color.Yellow)) ] [ text "Yellow" ] ]
+                ]
+            ]
+        ]
+
+
+
+-- VIEW
+
+
+view : Model -> { title : String, content : Html Msg }
+view model =
+    { title = "Room"
+    , content =
+        case model.game of
+            Nothing ->
+                viewLobby model
+
+            Just game ->
+                case model.state of
+                    Idle ->
+                        viewGame game
+
+                    Choice player card ->
+                        viewChoice player card game
+    }
 
 
 

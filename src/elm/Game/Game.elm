@@ -161,6 +161,25 @@ playCard playableCard game =
         ( game, False )
 
 
+applyCardEffect : Card -> State -> State
+applyCardEffect card game =
+    case card of
+        DrawCard _ ->
+            drawCard game |> drawCard
+
+        WildCard DrawFour ->
+            drawCard game |> drawCard |> drawCard |> drawCard
+
+        SkipCard _ ->
+            nextTurn game
+
+        ReverseCard _ ->
+            { game | players = List.reverse game.players } |> nextTurn
+
+        _ ->
+            game
+
+
 updatePlayer : Player -> List Player -> List Player
 updatePlayer updatedPlayer players =
     List.map

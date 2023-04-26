@@ -35,16 +35,6 @@ getCard playableCard =
             card
 
 
-makePlayableCard : Card -> PlayableCard
-makePlayableCard card =
-    case card of
-        WildCard _ ->
-            ChoiceCard card Color.Red
-
-        _ ->
-            StandardCard card
-
-
 toString : Card -> String
 toString card =
     case card of
