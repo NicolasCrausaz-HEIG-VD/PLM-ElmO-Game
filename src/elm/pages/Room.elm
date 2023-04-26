@@ -1,16 +1,16 @@
 port module Pages.Room exposing (..)
 
 import Game.Card exposing (Card(..), PlayableCard(..))
+import Game.CardView
 import Game.Color
 import Game.Game as Game
-import Html exposing (Html, button, div, li, text, ul)
-import Html.Attributes exposing (class, disabled)
+import Html exposing (Html, button, div, img, li, text, ul)
+import Html.Attributes exposing (class, disabled, src, style)
 import Html.Events exposing (onClick)
 import Json.Decode exposing (Error(..))
 import Random
 import Route
 import Session exposing (Session)
-import Game.CardView
 
 
 
@@ -173,6 +173,7 @@ update msg model =
 
 -- VIEW HELPER FUNCTIONS
 
+
 viewGame : Game.State -> Html Msg
 viewGame game =
     case Game.getCurrentPlayer game of
@@ -218,23 +219,51 @@ viewChoice player card _ =
     div [ class "choice-modal" ]
         [ div [ class "content" ]
             [ div [ class "title" ] [ text "Choose a color" ]
-            , ul []
+            , div []
                 [ li
-                    [ class "active"
+                    []
+                    [ button [ class "card active", onClick (PlayPlayableCard player (ChoiceCard card Game.Color.Red)) ]
+                        [ img
+                            [ src "/cards/empty_red.svg"
+                            , style "height" "150px"
+                            , class "card_front"
+                            ]
+                            []
+                        ]
                     ]
-                    [ button [ onClick (PlayPlayableCard player (ChoiceCard card Game.Color.Red)) ] [ text "Red" ] ]
                 , li
-                    [ class "active"
+                    []
+                    [ button [ class "card active", onClick (PlayPlayableCard player (ChoiceCard card Game.Color.Blue)) ]
+                        [ img
+                            [ src "/cards/empty_blue.svg"
+                            , style "height" "150px"
+                            , class "card_front"
+                            ]
+                            []
+                        ]
                     ]
-                    [ button [ onClick (PlayPlayableCard player (ChoiceCard card Game.Color.Blue)) ] [ text "Blue" ] ]
                 , li
-                    [ class "active"
+                    []
+                    [ button [ class "card active", onClick (PlayPlayableCard player (ChoiceCard card Game.Color.Green)) ]
+                        [ img
+                            [ src "/cards/empty_green.svg"
+                            , style "height" "150px"
+                            , class "card_front"
+                            ]
+                            []
+                        ]
                     ]
-                    [ button [ onClick (PlayPlayableCard player (ChoiceCard card Game.Color.Green)) ] [ text "Green" ] ]
                 , li
-                    [ class "active"
+                    []
+                    [ button [ class "card active", onClick (PlayPlayableCard player (ChoiceCard card Game.Color.Yellow)) ]
+                        [ img
+                            [ src "/cards/empty_yellow.svg"
+                            , style "height" "150px"
+                            , class "card_front"
+                            ]
+                            []
+                        ]
                     ]
-                    [ button [ onClick (PlayPlayableCard player (ChoiceCard card Game.Color.Yellow)) ] [ text "Yellow" ] ]
                 ]
             ]
         ]
