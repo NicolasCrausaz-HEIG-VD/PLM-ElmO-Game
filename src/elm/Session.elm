@@ -1,6 +1,7 @@
 module Session exposing (..)
 
 import Browser.Navigation as Nav
+import Game.Core
 
 
 type RoomData
@@ -12,7 +13,8 @@ type RoomData
 
 type Session
     = NotConnected Nav.Key
-    | Connected Nav.Key RoomData
+    | Host Nav.Key RoomData Game.Core.Model
+    | Client Nav.Key RoomData
 
 
 create : Nav.Key -> Session
@@ -26,10 +28,13 @@ navKey session =
         NotConnected key ->
             key
 
-        Connected key _ ->
+        Host key _ _ ->
+            key
+
+        Client key _ ->
             key
 
 
 setRoomData : RoomData -> Session -> Session
 setRoomData data session =
-    Connected (navKey session) data
+    Client (navKey session) data

@@ -34,3 +34,21 @@ view attributes { size, flipped } card =
                 []
             ]
         ]
+
+
+emptyView : List (Attribute msg) -> Html msg
+emptyView attributes =
+    button attributes
+        [ img
+            [ src "/cards/empty.svg" ]
+            []
+        ]
+
+
+cardView : List (Attribute msg) -> Card -> Html msg
+cardView attributes card =
+    button attributes
+        [ img
+            [ src ("/cards/" ++ Card.toString card ++ ".svg") ]
+            []
+        ]

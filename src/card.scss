@@ -58,3 +58,26 @@
 }
 
 
+.draw-stack {
+    .card img {
+        height: 150px;
+    }
+}
+
+.player {
+    .card img {
+        height: 80px;
+    }
+}
+
+.player-deck {
+    .card img {
+        height: 200px;
+    }
+}
+
+.active-card {
+    .card img {
+        height: 250px;
+    }
+}

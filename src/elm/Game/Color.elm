@@ -22,3 +22,22 @@ toString color =
 
         Yellow ->
             "yellow"
+
+
+fromString : String -> Maybe Color
+fromString string =
+    case string of
+        "red" ->
+            Just Red
+
+        "blue" ->
+            Just Blue
+
+        "green" ->
+            Just Green
+
+        "yellow" ->
+            Just Yellow
+
+        _ ->
+            Nothing

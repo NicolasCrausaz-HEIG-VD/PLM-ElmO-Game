@@ -16,10 +16,6 @@ type Card
     | WildCard WildCardType
 
 
-
--- Card with player choice of color
-
-
 type PlayableCard
     = StandardCard Card
     | ChoiceCard Card Color
@@ -59,8 +55,52 @@ toString card =
                     "wild_draw_four"
 
 
-getCardColor : Card -> Maybe Color
-getCardColor card =
+fromString : String -> Maybe Card
+fromString string =
+    let
+        parts =
+            String.split "_" string
+    in
+    case parts of
+        [ "draw", colorStr ] ->
+            Color.fromString colorStr
+                |> Maybe.map DrawCard
+
+        [ "skip", colorStr ] ->
+            Color.fromString colorStr
+                |> Maybe.map SkipCard
+
+        [ "reverse", colorStr ] ->
+            Color.fromString colorStr
+                |> Maybe.map ReverseCard
+
+        [ "wild" ] ->
+            Just (WildCard Standard)
+
+        [ "wild", "draw_four" ] ->
+            Just (WildCard DrawFour)
+
+        numberStr :: colorStr :: [] ->
+            let
+                number =
+                    String.toInt numberStr
+
+                color =
+                    Color.fromString colorStr
+            in
+            case ( number, color ) of
+                ( Just num, Just col ) ->
+                    Just (NumberCard num col)
+
+                _ ->
+                    Nothing
+
+        _ ->
+            Nothing
+
+
+getColor : Card -> Maybe Color
+getColor card =
     case card of
         NumberCard _ color ->
             Just color
@@ -82,7 +122,36 @@ getPlayableCardColor : PlayableCard -> Maybe Color
 getPlayableCardColor playableCard =
     case playableCard of
         StandardCard card ->
-            getCardColor card
+            getColor card
 
         ChoiceCard _ color ->
             Just color
+
+
+canPlayCard : Card -> ( Maybe Card, Maybe Color ) -> Bool
+canPlayCard playedCard ( maybeActiveCard, maybeActiveColor ) =
+    case ( maybeActiveCard, maybeActiveColor ) of
+        ( Just activeCard, Just activeColor ) ->
+            case playedCard of
+                WildCard _ ->
+                    True
+
+                NumberCard number color ->
+                    case activeCard of
+                        NumberCard activeNumber _ ->
+                            number == activeNumber || color == activeColor
+
+                        _ ->
+                            color == activeColor
+
+                DrawCard color ->
+                    activeCard == DrawCard activeColor || color == activeColor
+
+                SkipCard color ->
+                    activeCard == SkipCard activeColor || color == activeColor
+
+                ReverseCard color ->
+                    activeCard == ReverseCard activeColor || color == activeColor
+
+        _ ->
+            False

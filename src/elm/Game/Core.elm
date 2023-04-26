@@ -1,4 +1,4 @@
-module Game.Game exposing (..)
+module Game.Core exposing (..)
 
 import Game.Card exposing (Card(..), PlayableCard(..), WildCardType(..))
 import Game.Color exposing (Color(..))
@@ -15,13 +15,18 @@ type alias Draw =
     List Card
 
 
+type alias UUID =
+    String
+
+
 type alias Player =
     { name : String
+    , uuid : UUID
     , hand : Hand
     }
 
 
-type alias State =
+type alias Model =
     { players : List Player
     , drawStack : Draw
     , activeCard : Maybe Card
@@ -77,24 +82,24 @@ shuffle list seed =
 -- LOGIC
 
 
-addPlayer : String -> State -> State
-addPlayer name game =
+addPlayer : ( UUID, String ) -> Model -> Model
+addPlayer ( uuid, name ) game =
     let
         ( hand, drawStack ) =
             List.Extra.splitAt 7 game.drawStack
     in
     { game
-        | players = game.players ++ [ { name = name, hand = hand } ]
+        | players = game.players ++ [ { name = name, hand = hand, uuid = uuid } ]
         , drawStack = drawStack
     }
 
 
+removePlayer : UUID -> Model -> Model
+removePlayer uuid game =
+    { game | players = List.filter (\player -> player.uuid /= uuid) game.players }
 
--- Return a game with the first card in the draw stack as the active card
--- Infinite loop if no card is playable fixing passing array in params
 
-
-getFirstCard : State -> State
+getFirstCard : Model -> Model
 getFirstCard game =
     case game.drawStack of
         [] ->
@@ -109,40 +114,12 @@ getFirstCard game =
                     getFirstCard { game | drawStack = rest ++ [ card ] }
 
 
-
-nextTurn : State -> State
-nextTurn game =
-    { game | players = nextPlayer game.players }
-
-
-canPlayCard : Card -> State -> Bool
-canPlayCard playedCard game =
-    case ( playedCard, game.activeColor, game.activeCard ) of
-        ( WildCard _, _, _ ) ->
-            True
-
-        ( NumberCard number color, Just activeColor, Just activeCard ) ->
-            case activeCard of
-                NumberCard activeNumber _ ->
-                    number == activeNumber || color == activeColor
-
-                _ ->
-                    color == activeColor
-
-        ( DrawCard color, Just activeColor, Just activeCard ) ->
-            activeCard == DrawCard activeColor || color == activeColor
-
-        ( SkipCard color, Just activeColor, Just activeCard ) ->
-            activeCard == SkipCard activeColor || color == activeColor
-
-        ( ReverseCard color, Just activeColor, Just activeCard ) ->
-            activeCard == ReverseCard activeColor || color == activeColor
-
-        _ ->
-            False
+canPlayCard : Card -> Model -> Bool
+canPlayCard card game =
+    Game.Card.canPlayCard card ( game.activeCard, game.activeColor )
 
 
-playCard : PlayableCard -> State -> ( State, Bool )
+playCard : PlayableCard -> Model -> ( Model, Bool )
 playCard playableCard game =
     let
         activeCard =
@@ -161,19 +138,19 @@ playCard playableCard game =
         ( game, False )
 
 
-applyCardEffect : Card -> State -> State
+applyCardEffect : Card -> Model -> Model
 applyCardEffect card game =
-    case card of
-        DrawCard _ ->
-            drawCard game |> drawCard
+    case ( card, game |> getCurrentPlayer |> Tuple.first ) of
+        ( DrawCard _, Just player ) ->
+            drawCard 2 player game
 
-        WildCard DrawFour ->
-            drawCard game |> drawCard |> drawCard |> drawCard
+        ( WildCard DrawFour, Just player ) ->
+            drawCard 4 player game
 
-        SkipCard _ ->
+        ( SkipCard _, _ ) ->
             nextTurn game
 
-        ReverseCard _ ->
+        ( ReverseCard _, _ ) ->
             { game | players = List.reverse game.players } |> nextTurn
 
         _ ->
@@ -193,7 +170,7 @@ updatePlayer updatedPlayer players =
         players
 
 
-playerPlayCard : Player -> PlayableCard -> State -> ( State, Bool )
+playerPlayCard : Player -> PlayableCard -> Model -> ( Model, Bool )
 playerPlayCard player playableCard game =
     let
         ( newState, success ) =
@@ -209,6 +186,11 @@ playerPlayCard player playableCard game =
         ( game, False )
 
 
+nextTurn : Model -> Model
+nextTurn game =
+    { game | players = nextPlayer game.players }
+
+
 nextPlayer : List Player -> List Player
 nextPlayer players =
     case players of
@@ -216,11 +198,25 @@ nextPlayer players =
             []
 
         player :: rest ->
-            rest ++ [ player ]
+            ifPlayerHasNoCardSkip (rest ++ [ player ])
 
 
-initGame : State
-initGame =
+ifPlayerHasNoCardSkip : List Player -> List Player
+ifPlayerHasNoCardSkip players =
+    case players of
+        [] ->
+            []
+
+        player :: _ ->
+            if List.isEmpty player.hand then
+                nextPlayer players
+
+            else
+                players
+
+
+emptyGame : Model
+emptyGame =
     { players = []
     , drawStack = allCards
     , activeCard = Nothing
@@ -228,12 +224,16 @@ initGame =
     }
 
 
-shuffleGame : Random.Seed -> State -> State
-shuffleGame seed game =
-    { game | drawStack = shuffle game.drawStack seed }
+newGame : (Model -> msg) -> Cmd msg
+newGame toMsg =
+    let
+        updateModel shuffledCards =
+            { emptyGame | drawStack = shuffledCards } |> getFirstCard
+    in
+    Random.generate (toMsg << updateModel) (Random.List.shuffle allCards)
 
 
-getCurrentPlayer : State -> ( Maybe Player, List Player )
+getCurrentPlayer : Model -> ( Maybe Player, List Player )
 getCurrentPlayer game =
     case game.players of
         [] ->
@@ -243,35 +243,39 @@ getCurrentPlayer game =
             ( Just currentPlayer, remainingPlayers )
 
 
-getPlayer : String -> State -> ( Maybe Player, List Player )
-getPlayer name game =
+getPlayer : UUID -> Model -> ( Maybe Player, List Player )
+getPlayer uuid game =
     let
         ( matchingPlayer, remainingPlayers ) =
-            List.partition (\player -> player.name == name) game.players
+            List.partition (\player -> player.uuid == uuid) game.players
     in
     ( List.head matchingPlayer, remainingPlayers )
 
 
-drawCard : State -> State
-drawCard game =
-    case game.drawStack of
-        [] ->
-            game
+getPlayerIfTurn : UUID -> Model -> ( Maybe Player, List Player )
+getPlayerIfTurn uuid game =
+    case getCurrentPlayer game of
+        ( Just currentPlayer, remainingPlayers ) ->
+            if currentPlayer.uuid == uuid then
+                ( Just currentPlayer, remainingPlayers )
 
-        card :: rest ->
-            let
-                ( currentPlayer, remainingPlayers ) =
-                    getCurrentPlayer game
-            in
-            case currentPlayer of
-                Nothing ->
-                    game
+            else
+                ( Nothing, game.players )
 
-                Just player ->
-                    { game
-                        | players = { player | hand = player.hand ++ [ card ] } :: remainingPlayers
-                        , drawStack = rest
-                    }
+        _ ->
+            ( Nothing, game.players )
+
+
+drawCard : Int -> Player -> Model -> Model
+drawCard n player game =
+    let
+        ( cards, drawStack ) =
+            List.Extra.splitAt n game.drawStack
+    in
+    { game
+        | players = updatePlayer { player | hand = player.hand ++ cards } game.players
+        , drawStack = drawStack
+    }
 
 
 addCardToDrawStack : Maybe Card -> Draw -> Draw
@@ -282,3 +286,11 @@ addCardToDrawStack cardToAdd drawStack =
 
         Just card ->
             drawStack ++ [ card ]
+
+
+isGameOver : Model -> Bool
+isGameOver game =
+    game.players
+        |> List.filter (\player -> not (List.isEmpty player.hand))
+        |> List.length
+        |> (\length -> length <= 1)

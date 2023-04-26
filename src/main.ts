@@ -23,6 +23,18 @@ type Ports = {
   createRoom: {
     send: (code: string) => void;
   }
+  outgoingData: {
+    subscribe: (callback: (data: unknown) => void) => void;
+  }
+  incomingData: {
+    send: (data: unknown) => void;
+  }
+  incomingAction: {
+    send: (action: unknown) => void;
+  }
+  outgoingAction: {
+    subscribe: (callback: (data: unknown) => void) => void;
+  }
 }
 
 const appState = Elm.Main.init<Ports>({
@@ -56,4 +68,14 @@ appState.ports?.requestRoomCode?.subscribe(async () => {
   console.log('requestCreateRoom');
   const code = await network.onReady();
   appState.ports?.createRoom?.send(code);
+});
+
+appState.ports?.outgoingAction?.subscribe((action) => {
+  console.log('outgoingAction', JSON.stringify(action));
+  appState.ports?.incomingAction?.send(action);
+});
+
+appState.ports?.outgoingData?.subscribe((data) => {
+  console.log('outgoingData', JSON.stringify(data));
+  appState.ports?.incomingData?.send(data);
 });

@@ -1,16 +1,15 @@
 port module Pages.Room exposing (..)
 
 import Game.Card exposing (Card(..), PlayableCard(..))
+import Game.CardView
 import Game.Color
-import Game.Game as Game
+import Game.Core as Game
 import Html exposing (Html, button, div, li, text, ul)
 import Html.Attributes exposing (class, disabled)
 import Html.Events exposing (onClick)
 import Json.Decode exposing (Error(..))
-import Random
 import Route
 import Session exposing (Session)
-import Game.CardView
 
 
 
@@ -27,27 +26,37 @@ port handleMsg : (String -> msg) -> Sub msg
 -- MODEL
 
 
-type State
+type GameState
     = Idle
     | Choice Game.Player Card
 
 
+type alias GameModel =
+    { model : Game.Model
+    , state : GameState
+    }
+
+
+type State
+    = Lobby
+    | Game GameModel
+
+
 type alias Model =
     { session : Session
-    , game : Maybe Game.State
     , state : State
     }
 
 
 defaultModel : Session -> Model
 defaultModel session =
-    { session = session, game = Nothing, state = Idle }
+    { session = session, state = Lobby }
 
 
 init : Session -> ( Model, Cmd Msg )
 init session =
     case session of
-        Session.Connected _ _ ->
+        Session.Client _ _ ->
             ( defaultModel session, Cmd.none )
 
         _ ->
@@ -68,7 +77,7 @@ printPlayer player =
         ]
 
 
-displayPlayerDeck : Game.State -> Game.Player -> Html Msg
+displayPlayerDeck : Game.Model -> Game.Player -> Html Msg
 displayPlayerDeck game player =
     div [ class "player-deck" ]
         [ text player.name
@@ -77,9 +86,9 @@ displayPlayerDeck game player =
         ]
 
 
-displayDrawStack : Game.Draw -> Html Msg
-displayDrawStack stack =
-    div [ class "draw-stack", onClick DrawCard ]
+displayDrawStack : Game.Draw -> Game.Player -> Html Msg
+displayDrawStack stack player =
+    div [ class "draw-stack", onClick (DrawCard player) ]
         [ div [ class "cards" ]
             (List.map (\card -> Game.CardView.view [] { size = "150px", flipped = False } card) stack)
         ]
@@ -91,14 +100,15 @@ displayDrawStack stack =
 
 type Msg
     = StartGame
+    | NewGame Game.Model
     | BackLobby
     | PlayCard Game.Player Card
     | PlayPlayableCard Game.Player PlayableCard
-    | DrawCard
+    | DrawCard Game.Player
     | NextTurn
 
 
-playCard : Game.Player -> PlayableCard -> Game.State -> Game.State
+playCard : Game.Player -> PlayableCard -> Game.Model -> Game.Model
 playCard player playableCard game =
     Game.playerPlayCard player playableCard game
         |> Tuple.first
@@ -106,49 +116,61 @@ playCard player playableCard game =
         |> Game.applyCardEffect (Game.Card.getCard playableCard)
 
 
-playOrChoiceCard : Game.Player -> Card -> Game.State -> Model -> Model
-playOrChoiceCard player card game model =
+playOrChoiceCard : Game.Player -> Card -> GameModel -> GameModel
+playOrChoiceCard player card game =
     case card of
         WildCard _ ->
-            { model | state = Choice player card }
+            { game | state = Choice player card }
 
         _ ->
-            { model | game = Just (playCard player (StandardCard card) game) }
+            { game | model = game.model |> playCard player (StandardCard card) }
 
 
-updateGame : Msg -> Game.State -> Model -> ( Model, Cmd Msg )
-updateGame msg game model =
+updateGame : Msg -> GameModel -> ( GameModel, Cmd Msg )
+updateGame msg game =
     case msg of
         PlayCard player card ->
-            ( playOrChoiceCard player card game model, Cmd.none )
+            ( playOrChoiceCard player card game, Cmd.none )
 
         PlayPlayableCard player playableCard ->
-            ( { model | game = Just (playCard player playableCard game), state = Idle }, Cmd.none )
+            ( { game | model = game.model |> playCard player playableCard, state = Idle }, Cmd.none )
 
-        DrawCard ->
-            ( { model | game = Just (Game.drawCard game |> Game.nextTurn) }, Cmd.none )
+        DrawCard player ->
+            ( { game | model = game.model |> Game.drawCard 1 player |> Game.nextTurn }, Cmd.none )
 
         NextTurn ->
-            ( { model | game = Just (Game.nextTurn game) }, Cmd.none )
+            ( { game | model = game.model |> Game.nextTurn }, Cmd.none )
 
         _ ->
-            ( model, Cmd.none )
+            ( game, Cmd.none )
+
+
+initGame : Game.Model
+initGame =
+    Game.emptyGame
 
 
 updateNoGame : Msg -> Model -> ( Model, Cmd Msg )
 updateNoGame msg model =
     case msg of
         StartGame ->
+            ( model
+            , Game.newGame NewGame
+            )
+
+        NewGame game ->
             ( { model
-                | game =
-                    Just
-                        (Game.initGame
-                            |> Game.shuffleGame (Random.initialSeed 5)
-                            |> Game.addPlayer "Player 1"
-                            |> Game.addPlayer "Player 2"
-                            |> Game.addPlayer "Player 3"
-                            |> Game.getFirstCard
-                        )
+                | state =
+                    Game
+                        { model =
+                            game
+                                |> Game.getFirstCard
+                                |> Game.addPlayer ( "1", "Player 1" )
+                                |> Game.addPlayer ( "2", "Player 2" )
+                                |> Game.addPlayer ( "3", "Player 3" )
+                                |> Game.addPlayer ( "4", "Player 4" )
+                        , state = Idle
+                        }
               }
             , Cmd.none
             )
@@ -162,18 +184,23 @@ updateNoGame msg model =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case model.game of
-        Nothing ->
+    case model.state of
+        Lobby ->
             updateNoGame msg model
 
-        Just game ->
-            updateGame msg game model
+        Game game ->
+            let
+                ( newGame, cmd ) =
+                    updateGame msg game
+            in
+            ( { model | state = Game newGame }, cmd )
 
 
 
 -- VIEW HELPER FUNCTIONS
 
-viewGame : Game.State -> Html Msg
+
+viewGame : Game.Model -> Html Msg
 viewGame game =
     case Game.getCurrentPlayer game of
         ( Just currentPlayer, otherPlayers ) ->
@@ -181,7 +208,7 @@ viewGame game =
                 [ div [ class "topbar" ] (List.map printPlayer otherPlayers)
                 , displayPlayerDeck game currentPlayer
                 , div [ class "center" ]
-                    [ displayDrawStack (List.take 3 game.drawStack)
+                    [ displayDrawStack (List.take 3 game.drawStack) currentPlayer
                     , case game.activeCard of
                         Just card ->
                             Game.CardView.view [] { size = "300px", flipped = True } card
@@ -213,7 +240,7 @@ viewLobby _ =
         ]
 
 
-viewChoice : Game.Player -> Card -> Game.State -> Html Msg
+viewChoice : Game.Player -> Card -> Game.Model -> Html Msg
 viewChoice player card _ =
     div [ class "choice-modal" ]
         [ div [ class "content" ]
@@ -248,17 +275,17 @@ view : Model -> { title : String, content : Html Msg }
 view model =
     { title = "Room"
     , content =
-        case model.game of
-            Nothing ->
+        case model.state of
+            Lobby ->
                 viewLobby model
 
-            Just game ->
-                case model.state of
+            Game game ->
+                case game.state of
                     Idle ->
-                        viewGame game
+                        viewGame game.model
 
                     Choice player card ->
-                        viewChoice player card game
+                        viewChoice player card game.model
     }
 
 

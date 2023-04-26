@@ -4,6 +4,7 @@ import Browser exposing (Document)
 import Browser.Navigation as Nav
 import Html exposing (..)
 import Pages.Lobby as Lobby
+import Pages.Party as Party
 import Pages.Room as Room
 import Route exposing (Route)
 import Session exposing (Session)
@@ -14,6 +15,7 @@ type Model
     = Redirect Session
     | Room Room.Model
     | Lobby Lobby.Model
+    | Party Party.Model
 
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -35,6 +37,9 @@ view model =
         Lobby lobby ->
             viewWith LobbyMsg (Lobby.view lobby)
 
+        Party party ->
+            viewWith PartyMsg (Party.view party)
+
         Redirect _ ->
             { title = "Redirecting...", body = [] }
 
@@ -55,6 +60,7 @@ type Msg
     | LinkClicked Browser.UrlRequest
     | RoomMsg Room.Msg
     | LobbyMsg Lobby.Msg
+    | PartyMsg Party.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -74,6 +80,10 @@ update msg model =
         ( RoomMsg subMsg, Room room ) ->
             Room.update subMsg room
                 |> updateWith Room RoomMsg model
+
+        ( PartyMsg subMsg, Party party ) ->
+            Party.update subMsg party
+                |> updateWith Party PartyMsg model
 
         ( LobbyMsg subMsg, Lobby lobby ) ->
             Lobby.update subMsg lobby
@@ -103,6 +113,9 @@ toSession model =
         Lobby lobby ->
             Lobby.toSession lobby
 
+        Party party ->
+            Party.toSession party
+
         Redirect session ->
             session
 
@@ -122,6 +135,10 @@ changeRouteTo route model =
             Lobby.init session
                 |> updateWith Lobby LobbyMsg model
 
+        Just Route.Party ->
+            Party.init session
+                |> updateWith Party PartyMsg model
+
         Nothing ->
             ( model, Cmd.none )
 
@@ -138,6 +155,9 @@ subscriptions model =
 
         Lobby lobby ->
             Sub.map LobbyMsg (Lobby.subscriptions lobby)
+
+        Party party ->
+            Sub.map PartyMsg (Party.subscriptions party)
 
         _ ->
             Sub.none
