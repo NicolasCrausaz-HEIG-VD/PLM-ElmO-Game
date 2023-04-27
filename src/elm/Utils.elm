@@ -20,6 +20,7 @@ type alias Code =
 type alias RoomData =
     { code : Code
     , playerUUID : UUID
+    , username : String
     }
 
 

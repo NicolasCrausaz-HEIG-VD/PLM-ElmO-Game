@@ -93,7 +93,12 @@ addPlayer ( uuid, name ) game =
 
 removePlayer : UUID -> Model -> Model
 removePlayer uuid game =
-    { game | players = List.filter (\player -> player.uuid /= uuid) game.players }
+    case getPlayer uuid game of
+        ( Just player, remainingPlayers ) ->
+            { game | players = remainingPlayers, drawStack = game.drawStack ++ player.hand }
+
+        _ ->
+            game
 
 
 getFirstCard : Model -> Model

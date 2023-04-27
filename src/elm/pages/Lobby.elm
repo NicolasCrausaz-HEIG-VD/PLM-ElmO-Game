@@ -1,37 +1,27 @@
-port module Pages.Lobby exposing (..)
+module Pages.Lobby exposing (Model, Msg, init, subscriptions, toSession, update, view)
 
 import Game.Core
-import Html exposing (Html, button, code, div, img, input, li, text, ul)
+import Html exposing (Html, button, code, div, img, input, text)
 import Html.Attributes exposing (class, classList, placeholder, src, value)
 import Html.Events exposing (onClick, onInput)
+import Network
 import Route
 import Session exposing (Session)
 import Utils exposing (Code, UUID)
 
 
 
--- PORTS
-
-
-port joinRoom : ( Code, String ) -> Cmd msg
-
-
-port joinedRoom : (( Code, UUID ) -> msg) -> Sub msg
-
-
-port requestRoomCode : String -> Cmd msg
-
-
-port createRoom : (Code -> msg) -> Sub msg
-
-
-
 -- MODEL
+
+
+type Mode
+    = Host
+    | Client
 
 
 type alias Model =
     { session : Session
-    , isHost : Bool
+    , mode : Mode
     , username : String
     , code : Maybe Code
     }
@@ -40,7 +30,7 @@ type alias Model =
 init : Session -> ( Model, Cmd Msg )
 init session =
     ( { session = session
-      , isHost = False
+      , mode = Client
       , username = ""
       , code = Nothing
       }
@@ -61,21 +51,22 @@ view model =
                 [ img [ src "/logo.svg" ] []
                 , img [ src "/logo_text.svg", class "title" ] []
                 , div [ class "tabs" ]
-                    [ button [ onClick HostGame, classList [ ( "active", model.isHost ) ] ] [ text "Host Game" ]
-                    , button [ onClick JoinGame, classList [ ( "active", not model.isHost ) ] ] [ text "Join Game" ]
+                    [ button [ onClick (ToggleMode Host), classList [ ( "active", model.mode == Host ) ] ] [ text "Host Game" ]
+                    , button [ onClick (ToggleMode Client), classList [ ( "active", model.mode == Client ) ] ] [ text "Join Game" ]
                     ]
                 , div [ class "container" ]
-                    (if model.isHost then
-                        [ text "Ready to host a game!"
-                        , input [ placeholder "Username", onInput SetUsername, value model.username ] []
-                        , button [ onClick StartGame ] [ text "Start Game" ]
-                        ]
+                    (case model.mode of
+                        Host ->
+                            [ text "Ready to host a game!"
+                            , input [ placeholder "Username", onInput SetUsername, value model.username ] []
+                            , button [ onClick StartGame ] [ text "Start Game" ]
+                            ]
 
-                     else
-                        [ input [ placeholder "Code", onInput SetCode, value (Maybe.withDefault "" model.code) ] []
-                        , input [ placeholder "Username", onInput SetUsername, value model.username ] []
-                        , button [ onClick StartGame ] [ text "Join Game" ]
-                        ]
+                        Client ->
+                            [ input [ placeholder "Code", onInput SetCode, value (Maybe.withDefault "" model.code) ] []
+                            , input [ placeholder "Username", onInput SetUsername, value model.username ] []
+                            , button [ onClick StartGame ] [ text "Join Game" ]
+                            ]
                     )
                 ]
             ]
@@ -87,8 +78,7 @@ view model =
 
 
 type Msg
-    = HostGame
-    | JoinGame
+    = ToggleMode Mode
     | StartHostGame Code Game.Core.Model
     | StartClientGame ( Code, UUID )
     | StartGame
@@ -97,22 +87,24 @@ type Msg
     | RequestNewGame Code
 
 
+validateUsername : String -> ( String, Bool )
+validateUsername username =
+    ( username, String.length username > 0 )
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        HostGame ->
-            ( { model | isHost = True }, Cmd.none )
-
-        JoinGame ->
-            ( { model | isHost = False }, Cmd.none )
+        ToggleMode mode ->
+            ( { model | mode = mode }, Cmd.none )
 
         StartGame ->
-            case ( model.code, model.username, model.isHost ) of
-                ( _, username, True ) ->
-                    ( model, requestRoomCode username )
+            case ( model.code, model.username |> validateUsername |> Tuple.second, model.mode ) of
+                ( _, True, Host ) ->
+                    ( model, Network.createRoom () )
 
-                ( Just code, username, False ) ->
-                    ( model, joinRoom ( code, username ) )
+                ( Just code, True, Client ) ->
+                    ( model, Network.joinRoom code )
 
                 _ ->
                     ( model, Cmd.none )
@@ -124,10 +116,10 @@ update msg model =
             ( { model | username = username }, Cmd.none )
 
         StartClientGame ( code, playerUUID ) ->
-            ( { model | session = model.session |> Session.update (Session.Client { code = code, playerUUID = playerUUID }) }, Route.replaceUrl model.session.key (Route.Party code) )
+            ( { model | session = model.session |> Session.update (Session.Client { code = code, playerUUID = playerUUID, username = model.username }) }, Route.replaceUrl model.session.key (Route.Room code) )
 
         StartHostGame code gameModel ->
-            ( { model | session = model.session |> Session.update (Session.Host gameModel { code = code, playerUUID = code }) }, Route.replaceUrl model.session.key (Route.Party code) )
+            ( { model | session = model.session |> Session.update (Session.Host gameModel { code = code, playerUUID = code, username = model.username }) }, Route.replaceUrl model.session.key (Route.Room code) )
 
         RequestNewGame code ->
             ( model, Game.Core.newGame (StartHostGame code) )
@@ -140,8 +132,8 @@ update msg model =
 subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
-        [ joinedRoom StartClientGame
-        , createRoom RequestNewGame
+        [ Network.joinedRoom StartClientGame
+        , Network.createdRoom RequestNewGame
         ]
 
 

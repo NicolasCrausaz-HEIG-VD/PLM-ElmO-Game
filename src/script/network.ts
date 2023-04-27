@@ -1,9 +1,8 @@
 import { DataConnection, Peer } from 'peerjs'
 import Emittery from 'emittery'
 
-type NetworkOptions<TData,TEvent> = {
-  metadata?: TData;
-  middleware?: (this: Network<TData,TEvent>, conn: DataConnection) => boolean;
+type NetworkOptions<TEvent> = {
+  middleware?: (this: Network<TEvent>, conn: DataConnection) => boolean;
 }
 
 type Message<TEvent = Record<string, any>> = {
@@ -11,14 +10,13 @@ type Message<TEvent = Record<string, any>> = {
   data: TEvent[keyof TEvent];
 }
 
-export class Network<TData = unknown,TEvent = Record<string, any>> extends Emittery<{
-  newConnection: { conn: DataConnection; metadata: TData };
+export class Network<TEvent = Record<string, any>> extends Emittery<{
+  newConnection: DataConnection;
   removeConnection: DataConnection;
 }> {
   private peer: Peer;
   private connections = new Map<string, DataConnection>();
   private readonly isReady: Promise<void>
-  private readonly metadata?: TData;
 
   protected channelEmitter = new Emittery<TEvent>();
 
@@ -26,9 +24,8 @@ export class Network<TData = unknown,TEvent = Record<string, any>> extends Emitt
     this.channelEmitter.emit(channel, data);
   }
 
-  public constructor({middleware, metadata}: NetworkOptions<TData,TEvent> = {}) {
+  public constructor({middleware}: NetworkOptions<TEvent> = {}) {
     super();
-    this.metadata = metadata;
     this.peer = new Peer();
     this.isReady = new Promise<void>((resolve) => {
       this.peer.once('open', () => {
@@ -42,6 +39,9 @@ export class Network<TData = unknown,TEvent = Record<string, any>> extends Emitt
         });
         resolve();
       });
+    });
+    window.addEventListener('beforeunload', () => {
+      this.peer.destroy();
     });
   }
 
@@ -57,10 +57,7 @@ export class Network<TData = unknown,TEvent = Record<string, any>> extends Emitt
   }
 
   private addConnection(conn: DataConnection) {
-    void this.emit('newConnection', {
-      conn,
-      metadata: conn.metadata,
-    });
+    void this.emit('newConnection', conn);
 
     this.connections.set(conn.peer, conn);
     conn.once('close', () => {
@@ -74,9 +71,7 @@ export class Network<TData = unknown,TEvent = Record<string, any>> extends Emitt
 
   public async connect(code: string) {
     await this.isReady;
-    const conn = this.peer.connect(code, {
-      metadata: this.metadata,
-    });
+    const conn = this.peer.connect(code);
     return new Promise<DataConnection>((resolve, reject) => {
       conn.once('open', () => {
         this.addConnection(conn);

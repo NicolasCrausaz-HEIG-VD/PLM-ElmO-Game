@@ -4,7 +4,6 @@ import Browser exposing (Document)
 import Browser.Navigation as Nav
 import Html exposing (..)
 import Pages.Lobby as Lobby
-import Pages.Party as Party
 import Pages.Room as Room
 import Route exposing (Route)
 import Session exposing (Session)
@@ -14,9 +13,8 @@ import Utils exposing (updateWith, viewWith)
 
 type Model
     = Redirect Session
-    | Room Room.Model
     | Lobby Lobby.Model
-    | Party Party.Model
+    | Room Room.Model
 
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -32,14 +30,11 @@ init _ url navKey =
 view : Model -> Document Msg
 view model =
     case model of
-        Room room ->
-            Room.view room |> viewWith RoomMsg
-
         Lobby lobby ->
             Lobby.view lobby |> viewWith LobbyMsg
 
-        Party party ->
-            Party.view party |> viewWith PartyMsg
+        Room room ->
+            Room.view room |> viewWith RoomMsg
 
         Redirect _ ->
             { title = "Redirecting...", body = [] }
@@ -52,9 +47,8 @@ view model =
 type Msg
     = UrlChanged Url
     | LinkClicked Browser.UrlRequest
-    | RoomMsg Room.Msg
     | LobbyMsg Lobby.Msg
-    | PartyMsg Party.Msg
+    | RoomMsg Room.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -75,10 +69,6 @@ update msg model =
             Room.update subMsg room
                 |> updateWith Room RoomMsg model
 
-        ( PartyMsg subMsg, Party party ) ->
-            Party.update subMsg party
-                |> updateWith Party PartyMsg model
-
         ( LobbyMsg subMsg, Lobby lobby ) ->
             Lobby.update subMsg lobby
                 |> updateWith Lobby LobbyMsg model
@@ -94,14 +84,11 @@ update msg model =
 toSession : Model -> Session
 toSession model =
     case model of
-        Room room ->
-            Room.toSession room
-
         Lobby lobby ->
             Lobby.toSession lobby
 
-        Party party ->
-            Party.toSession party
+        Room room ->
+            Room.toSession room
 
         Redirect session ->
             session
@@ -114,17 +101,13 @@ changeRouteTo route model =
             toSession model
     in
     case route of
-        Just (Route.Room _) ->
-            Room.init session
-                |> updateWith Room RoomMsg model
-
         Just Route.Lobby ->
             Lobby.init session
                 |> updateWith Lobby LobbyMsg model
 
-        Just (Route.Party _) ->
-            Party.init session
-                |> updateWith Party PartyMsg model
+        Just (Route.Room code) ->
+            Room.init code session
+                |> updateWith Room RoomMsg model
 
         Nothing ->
             ( model, Cmd.none )
@@ -137,14 +120,11 @@ changeRouteTo route model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model of
-        Room room ->
-            Sub.map RoomMsg (Room.subscriptions room)
-
         Lobby lobby ->
             Sub.map LobbyMsg (Lobby.subscriptions lobby)
 
-        Party party ->
-            Sub.map PartyMsg (Party.subscriptions party)
+        Room room ->
+            Sub.map RoomMsg (Room.subscriptions room)
 
         _ ->
             Sub.none

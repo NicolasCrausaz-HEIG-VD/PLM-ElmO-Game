@@ -1,25 +1,19 @@
-port module Pages.Room exposing (..)
+port module Pages.Room exposing (Model, Msg, init, subscriptions, toSession, update, view)
 
-import Game.Card exposing (Card(..), PlayableCard(..))
+import Dict
+import Game.Card
 import Game.CardView
+import Game.Client
 import Game.Color
-import Game.Core as Game
-import Html exposing (Html, button, div, img, li, text, ul)
-import Html.Attributes exposing (class, disabled, src, style)
+import Game.Host
+import Html exposing (Html, button, div, img, li, span, text)
+import Html.Attributes exposing (class, classList, disabled, src, style)
 import Html.Events exposing (onClick)
-import Json.Decode exposing (Error(..))
-import Route
+import Json.Decode as D
+import Json.Encode as E
+import Network
 import Session exposing (Session)
-
-
-
--- PORTS
-
-
-port sendMsg : String -> Cmd msg
-
-
-port handleMsg : (String -> msg) -> Sub msg
+import Utils exposing (Code, UUID)
 
 
 
@@ -27,156 +21,94 @@ port handleMsg : (String -> msg) -> Sub msg
 
 
 type GameState
-    = Idle
-    | Choice Game.Player Card
-
-
-type alias GameModel =
-    { model : Game.Model
-    , state : GameState
-    }
-
-
-type State
-    = Lobby
-    | Game GameModel
+    = Playing
+    | SelectColor Game.Card.Card
 
 
 type alias Model =
     { session : Session
-    , state : State
+    , state : GameState
+    , game : Maybe Game.Client.Model
     }
 
 
-defaultModel : Session -> Model
-defaultModel session =
-    { session = session, state = Lobby }
+initModel : Session -> Model
+initModel session =
+    { session = session, game = Nothing, state = Playing }
 
 
-init : Session -> ( Model, Cmd Msg )
-init session =
+init : Code -> Session -> ( Model, Cmd Msg )
+init code session =
     case session.session of
-        Session.Client _ ->
-            ( defaultModel session, Cmd.none )
+        Session.NotConnected ->
+            ( initModel session, Network.joinRoom code )
 
-        _ ->
-            -- If the session is not connected, redirect to lobby (middleware)
-            ( defaultModel session, Route.replaceUrl session.key Route.Lobby )
+        Session.Host _ data ->
+            ( initModel session, outgoingAction (Game.Host.encodeAction (Game.Host.PlayerJoin data.playerUUID data.username)) )
 
-
-
--- VIEW
-
-
-printPlayer : Game.Player -> Html Msg
-printPlayer player =
-    div [ class "player" ]
-        [ text player.name
-        , div [ class "cards" ]
-            (List.map (\card -> Game.CardView.view [] { size = "100px", flipped = False } card) player.hand)
-        ]
-
-
-displayPlayerDeck : Game.Model -> Game.Player -> Html Msg
-displayPlayerDeck game player =
-    div [ class "player-deck" ]
-        [ text player.name
-        , div [ class "cards" ]
-            (List.map (\card -> Game.CardView.view [ onClick (PlayCard player card), disabled (not (Game.canPlayCard card game)) ] { size = "150px", flipped = True } card) player.hand)
-        ]
-
-
-displayDrawStack : Game.Draw -> Game.Player -> Html Msg
-displayDrawStack stack player =
-    div [ class "draw-stack", onClick (DrawCard player) ]
-        [ div [ class "cards" ]
-            (List.map (\card -> Game.CardView.view [] { size = "150px", flipped = False } card) stack)
-        ]
+        Session.Client data ->
+            ( initModel session, outgoingAction (Game.Host.encodeAction (Game.Host.PlayerJoin data.playerUUID data.username)) )
 
 
 
--- UPDATE
+-- PORTS
+
+
+port incomingData : (E.Value -> msg) -> Sub msg
+
+
+port outgoingAction : E.Value -> Cmd msg
+
+
+
+--- UPDATE
 
 
 type Msg
-    = StartGame
-    | NewGame Game.Model
-    | BackLobby
-    | PlayCard Game.Player Card
-    | PlayPlayableCard Game.Player PlayableCard
-    | DrawCard Game.Player
-    | NextTurn
+    = HostMsg Game.Host.HostMsg
+    | ClientMsg ClientMsg
+    | StartClientGame ( Code, UUID )
 
 
-playCard : Game.Player -> PlayableCard -> Game.Model -> Game.Model
-playCard player playableCard game =
-    Game.playerPlayCard player playableCard game
-        |> Tuple.first
-        |> Game.nextTurn
-        |> Game.applyCardEffect (Game.Card.getCard playableCard)
+type ClientMsg
+    = PlayCard Game.Card.PlayableCard
+    | DrawCard
+    | ClickCard Game.Card.Card
+    | SetState GameState
+    | IncomingData E.Value
+    | SendAction Game.Host.Action
 
 
-playOrChoiceCard : Game.Player -> Card -> GameModel -> GameModel
-playOrChoiceCard player card game =
-    case card of
-        WildCard _ ->
-            { game | state = Choice player card }
+clientUpdate : ClientMsg -> Model -> ( Model, Cmd Msg )
+clientUpdate msg model =
+    case ( msg, model.game ) of
+        ( DrawCard, Just game ) ->
+            clientUpdate (SendAction (Game.Host.DrawCard game.localPlayer.uuid)) { model | state = Playing }
 
-        _ ->
-            { game | model = game.model |> playCard player (StandardCard card) }
+        ( PlayCard card, Just game ) ->
+            clientUpdate (SendAction (Game.Host.PlayCard game.localPlayer.uuid card)) { model | state = Playing }
 
+        ( ClickCard card, Just _ ) ->
+            case card of
+                Game.Card.WildCard _ ->
+                    ( { model | state = SelectColor card }, Cmd.none )
 
-updateGame : Msg -> GameModel -> ( GameModel, Cmd Msg )
-updateGame msg game =
-    case msg of
-        PlayCard player card ->
-            ( playOrChoiceCard player card game, Cmd.none )
+                _ ->
+                    clientUpdate (PlayCard (Game.Card.StandardCard card)) model
 
-        PlayPlayableCard player playableCard ->
-            ( { game | model = game.model |> playCard player playableCard, state = Idle }, Cmd.none )
+        ( SetState state, _ ) ->
+            ( { model | state = state }, Cmd.none )
 
-        DrawCard player ->
-            ( { game | model = game.model |> Game.drawCard 1 player |> Game.nextTurn }, Cmd.none )
+        ( SendAction action, _ ) ->
+            ( model, outgoingAction (Game.Host.encodeAction (Debug.log "[CLIENT] send action" action)) )
 
-        NextTurn ->
-            ( { game | model = game.model |> Game.nextTurn }, Cmd.none )
+        ( IncomingData data, _ ) ->
+            case D.decodeValue Game.Client.decodeModel data of
+                Ok newGame ->
+                    ( { model | game = Just (Debug.log "[CLIENT] update" newGame) }, Cmd.none )
 
-        _ ->
-            ( game, Cmd.none )
-
-
-initGame : Game.Model
-initGame =
-    Game.emptyGame
-
-
-updateNoGame : Msg -> Model -> ( Model, Cmd Msg )
-updateNoGame msg model =
-    case msg of
-        StartGame ->
-            ( model
-            , Game.newGame NewGame
-            )
-
-        NewGame game ->
-            ( { model
-                | state =
-                    Game
-                        { model =
-                            game
-                                |> Game.getFirstCard
-                                |> Game.addPlayer ( "1", "Player 1" )
-                                |> Game.addPlayer ( "2", "Player 2" )
-                                |> Game.addPlayer ( "3", "Player 3" )
-                                |> Game.addPlayer ( "4", "Player 4" )
-                        , state = Idle
-                        }
-              }
-            , Cmd.none
-            )
-
-        BackLobby ->
-            ( model, Route.replaceUrl model.session.key Route.Lobby )
+                Err err ->
+                    ( model, Debug.log ("Error decoding incoming data: " ++ Debug.toString err) Cmd.none )
 
         _ ->
             ( model, Cmd.none )
@@ -184,71 +116,76 @@ updateNoGame msg model =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case model.state of
-        Lobby ->
-            updateNoGame msg model
+    case msg of
+        HostMsg hostMsg ->
+            Game.Host.update hostMsg model
 
-        Game game ->
-            let
-                ( newGame, cmd ) =
-                    updateGame msg game
-            in
-            ( { model | state = Game newGame }, cmd )
+        ClientMsg clientMsg ->
+            clientUpdate clientMsg model
 
+        StartClientGame ( code, playerUUID ) ->
+            init code (model.session |> Session.update (Session.Client { code = code, playerUUID = playerUUID, username = "Elmo" }))
 
 
--- VIEW HELPER FUNCTIONS
+
+-- VIEW
 
 
-viewGame : Game.Model -> Html Msg
-viewGame game =
-    case Game.getCurrentPlayer game of
-        ( Just currentPlayer, otherPlayers ) ->
-            div [ class "game" ]
-                [ div [ class "topbar" ] (List.map printPlayer otherPlayers)
-                , displayPlayerDeck game currentPlayer
-                , div [ class "center" ]
-                    [ displayDrawStack (List.take 3 game.drawStack) currentPlayer
-                    , case game.activeCard of
-                        Just card ->
-                            Game.CardView.view [] { size = "300px", flipped = True } card
-
-                        Nothing ->
-                            div [] []
-                    ]
-                ]
-
-        ( Nothing, _ ) ->
-            div [] []
+displayDistantPlayer : Game.Client.Model -> Game.Client.DistantPlayer -> Html ClientMsg
+displayDistantPlayer model player =
+    div [ class "player", classList [ ( "active", model.currentPlayer == player.uuid ) ] ]
+        [ span [ class "player-name" ] [ text player.name ]
+        , div [ class "cards" ]
+            (List.repeat player.cards (Game.CardView.emptyView [ class "card" ]))
+        ]
 
 
-viewLobby : Model -> Html Msg
-viewLobby _ =
-    div [ class "lobby-menu" ]
-        [ div [ class "content" ]
-            [ div [ class "title" ] [ text "Lobby" ]
-            , div [ class "subtitle" ] [ text "Players: todo" ]
-            , ul []
-                [ li
-                    [ class "active"
-                    ]
-                    [ button [ onClick StartGame ] [ text "Start Game" ] ]
-                , li []
-                    [ button [ onClick BackLobby ] [ text "Back to Lobby" ] ]
+displayPlayerDeck : Game.Client.Model -> Game.Client.LocalPlayer -> Html ClientMsg
+displayPlayerDeck model player =
+    div [ class "player-deck", classList [ ( "active", model.currentPlayer == player.uuid ) ] ]
+        [ span [ class "player-name" ] [ text player.name ]
+        , div [ class "cards" ]
+            (List.map (\card -> Game.CardView.cardView [ class "card", onClick (ClickCard card), disabled (not (Game.Card.canPlayCard card ( model.activeCard, model.activeColor ))) ] card) player.hand)
+        ]
+
+
+displayDrawStack : Int -> Html ClientMsg
+displayDrawStack stack =
+    div [ class "draw-stack" ]
+        [ div [ class "cards" ]
+            (List.repeat (min 3 stack) (Game.CardView.emptyView [ class "card", onClick DrawCard ]))
+        ]
+
+
+viewGame : Game.Client.Model -> Html ClientMsg
+viewGame model =
+    div [ class "game" ]
+        [ div [ class "topbar" ] (List.map (displayDistantPlayer model) (Dict.values model.distantPlayers))
+        , displayPlayerDeck model model.localPlayer
+        , div [ class "center" ]
+            [ displayDrawStack model.drawStack
+            , div [ class "active-card" ]
+                [ case model.activeCard of
+                    Just card ->
+                        Game.CardView.cardView [ class "card" ] card
+
+                    Nothing ->
+                        div [] []
                 ]
             ]
         ]
 
 
-viewChoice : Game.Player -> Card -> Game.Model -> Html Msg
-viewChoice player card _ =
+viewChoice : Game.Card.Card -> Html ClientMsg
+viewChoice card =
     div [ class "choice-modal" ]
         [ div [ class "content" ]
             [ div [ class "title" ] [ text "Choose a color" ]
+            , button [ onClick (SetState Playing) ] [ text "Cancel" ]
             , div []
                 [ li
                     []
-                    [ button [ class "card active", onClick (PlayPlayableCard player (ChoiceCard card Game.Color.Red)) ]
+                    [ button [ class "card active", onClick (PlayCard (Game.Card.ChoiceCard card Game.Color.Red)) ]
                         [ img
                             [ src "/cards/empty_red.svg"
                             , style "height" "150px"
@@ -259,7 +196,7 @@ viewChoice player card _ =
                     ]
                 , li
                     []
-                    [ button [ class "card active", onClick (PlayPlayableCard player (ChoiceCard card Game.Color.Blue)) ]
+                    [ button [ class "card active", onClick (PlayCard (Game.Card.ChoiceCard card Game.Color.Blue)) ]
                         [ img
                             [ src "/cards/empty_blue.svg"
                             , style "height" "150px"
@@ -270,7 +207,7 @@ viewChoice player card _ =
                     ]
                 , li
                     []
-                    [ button [ class "card active", onClick (PlayPlayableCard player (ChoiceCard card Game.Color.Green)) ]
+                    [ button [ class "card active", onClick (PlayCard (Game.Card.ChoiceCard card Game.Color.Green)) ]
                         [ img
                             [ src "/cards/empty_green.svg"
                             , style "height" "150px"
@@ -281,7 +218,7 @@ viewChoice player card _ =
                     ]
                 , li
                     []
-                    [ button [ class "card active", onClick (PlayPlayableCard player (ChoiceCard card Game.Color.Yellow)) ]
+                    [ button [ class "card active", onClick (PlayCard (Game.Card.ChoiceCard card Game.Color.Yellow)) ]
                         [ img
                             [ src "/cards/empty_yellow.svg"
                             , style "height" "150px"
@@ -295,25 +232,19 @@ viewChoice player card _ =
         ]
 
 
-
--- VIEW
-
-
 view : Model -> { title : String, content : Html Msg }
 view model =
-    { title = "Room"
+    { title = "Room Elmo"
     , content =
-        case model.state of
-            Lobby ->
-                viewLobby model
+        case ( model.game, model.state ) of
+            ( Just game, Playing ) ->
+                viewGame game |> Html.map ClientMsg
 
-            Game game ->
-                case game.state of
-                    Idle ->
-                        viewGame game.model
+            ( Just _, SelectColor card ) ->
+                viewChoice card |> Html.map ClientMsg
 
-                    Choice player card ->
-                        viewChoice player card game.model
+            ( Nothing, _ ) ->
+                div [] [ text "Loading..." ]
     }
 
 
@@ -323,7 +254,11 @@ view model =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    Sub.none
+    Sub.batch
+        [ incomingData (ClientMsg << IncomingData)
+        , Game.Host.incomingAction (HostMsg << Game.Host.IncomingAction)
+        , Network.joinedRoom StartClientGame
+        ]
 
 
 

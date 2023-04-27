@@ -3,7 +3,7 @@ module Game.Client exposing (..)
 import Dict exposing (Dict)
 import Game.Card exposing (Card, PlayableCard(..))
 import Game.Color exposing (Color)
-import Game.Core exposing (Hand, Player, allCards)
+import Game.Core exposing (Hand, allCards)
 import Json.Decode as D
 import Json.Encode as E
 import Utils exposing (UUID)
@@ -30,22 +30,6 @@ type alias Model =
     , drawStack : Int
     , activeCard : Maybe Card
     , activeColor : Maybe Color
-    }
-
-
-toDistantPlayer : Player -> DistantPlayer
-toDistantPlayer player =
-    { name = player.name
-    , uuid = player.uuid
-    , cards = List.length player.hand
-    }
-
-
-toLocalPlayer : Player -> LocalPlayer
-toLocalPlayer player =
-    { name = player.name
-    , uuid = player.uuid
-    , hand = player.hand
     }
 
 

@@ -1,20 +1,20 @@
 import { Elm } from './elm/Main.elm'
-import './game.scss'
-import './index.scss'
-import './card.scss'
-import { Network } from './network'
+import './style/game.scss'
+import './style/index.scss'
+import './style/card.scss'
+import { Network } from './script/network'
 
 type Ports = {
   joinRoom: {
-    subscribe: (callback: ([code, username]:[string, string]) => void) => void;
+    subscribe: (callback: (code:string) => void) => void;
   },
   joinedRoom: {
     send: ([code, playerUUID]:[string, string]) => void;
   }
-  requestRoomCode: {
-    subscribe: (callback: (username:string) => void) => void;
-  }
   createRoom: {
+    subscribe: (callback: () => void) => void;
+  }
+  createdRoom: {
     send: (code: string) => void;
   }
   outgoingData: {
@@ -36,15 +36,11 @@ const appState = Elm.Main.init<Ports>({
 });
 
 
-let network: Network<{username: string}> | undefined;
+let network: Network | undefined;
 
 // Client
-appState.ports?.joinRoom?.subscribe(async ([code, username]) => {
-  network = new Network({
-    metadata: {
-      username
-    }
-  });
+appState.ports?.joinRoom?.subscribe(async (code) => {
+  network = new Network();
   await network.connect(code);
 
   network.channel('data').on(data => {
@@ -60,22 +56,19 @@ appState.ports?.joinRoom?.subscribe(async ([code, username]) => {
 
 
 // Host
-appState.ports?.requestRoomCode?.subscribe(async username => {
+appState.ports?.createRoom?.subscribe(async () => {
   network = new Network({
-    metadata: {
-      username
-    },
     middleware() {
       return this.getPeers().length < 4;
     }
   });
   const code = await network.onReady();
 
-  network.on('newConnection', ({metadata,conn}) => {
+  network.on('removeConnection', (conn) => {
+    console.log('removeConnection', conn);
     appState.ports?.incomingAction?.send({
-      action: 'playerJoin',
+      action: 'playerLeave',
       uuid: conn.peer,
-      name: metadata.username,
     });
   });
 
@@ -97,13 +90,7 @@ appState.ports?.requestRoomCode?.subscribe(async username => {
     network?.channel('action').send(code, action);
   });
 
-  appState.ports?.createRoom?.send(code);
-
-  appState.ports?.incomingAction?.send({
-    action: 'playerJoin',
-    uuid: network.getPeerId(),
-    name: username,
-  });
+  appState.ports?.createdRoom?.send(code);
 });
 
 

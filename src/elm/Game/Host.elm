@@ -1,14 +1,11 @@
 port module Game.Host exposing (..)
 
-import Dict
 import Game.Card exposing (PlayableCard)
-import Game.Client
 import Game.Color
 import Game.Core
 import Json.Decode as D
 import Json.Encode as E
-import Pages.Room exposing (Msg(..))
-import Session exposing (Session, SessionType)
+import Session exposing (Session)
 import Utils exposing (UUID)
 
 
@@ -30,7 +27,7 @@ needToUpdate updated game =
 
 onAction : Action -> Game -> ( Game, Bool )
 onAction action game =
-    case Debug.log "[HOST] onAction" action of
+    case Debug.log "[HOST] got action" action of
         PlayerJoin uuid name ->
             game |> Game.Core.addPlayer ( uuid, name ) |> needToUpdate True
 
@@ -70,39 +67,6 @@ onAction action game =
 
 
 --- Return the gGame.Client.Model for a given player ( local player )
-
-
-toLocalPlayer : Game.Core.Player -> Game.Client.LocalPlayer
-toLocalPlayer player =
-    { name = player.name
-    , uuid = player.uuid
-    , hand = player.hand
-    }
-
-
-toDistantePlayer : Game.Core.Player -> Game.Client.DistantPlayer
-toDistantePlayer player =
-    { name = player.name
-    , uuid = player.uuid
-    , cards = List.length player.hand
-    }
-
-
-toClient : Game -> UUID -> Maybe Game.Client.Model
-toClient game playerUUID =
-    case ( game |> Game.Core.getPlayer playerUUID, game |> Game.Core.getCurrentPlayer |> Tuple.first ) of
-        ( ( Just player, players ), Just currentPlayer ) ->
-            Just
-                { distantPlayers = Dict.fromList (List.map (\p -> ( p.uuid, toDistantePlayer p )) players)
-                , localPlayer = toLocalPlayer player
-                , currentPlayer = currentPlayer.uuid
-                , drawStack = List.length game.drawStack
-                , activeCard = game.activeCard
-                , activeColor = game.activeColor
-                }
-
-        _ ->
-            Nothing
 
 
 port outgoingData : E.Value -> Cmd msg

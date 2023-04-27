@@ -58,7 +58,8 @@
   }
 
   img.title {
-    transform: rotate(-10deg) translate(20px, -80px);
+    transform: rotate(-10deg) translateX(10px);
+    margin: -80px 0 25px 0;
   }
 
   ul {
