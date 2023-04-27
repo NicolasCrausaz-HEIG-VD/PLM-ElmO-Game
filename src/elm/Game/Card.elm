@@ -74,11 +74,11 @@ fromString string =
             Color.fromString colorStr
                 |> Maybe.map ReverseCard
 
+        [ "wild", "draw", "four" ] ->
+            Just (WildCard DrawFour)
+
         [ "wild" ] ->
             Just (WildCard Standard)
-
-        [ "wild", "draw_four" ] ->
-            Just (WildCard DrawFour)
 
         numberStr :: colorStr :: [] ->
             let

@@ -9,6 +9,7 @@ import Pages.Room as Room
 import Route exposing (Route)
 import Session exposing (Session)
 import Url exposing (Url)
+import Utils.Utils exposing (updateWith, viewWith)
 
 
 type Model
@@ -32,23 +33,16 @@ view : Model -> Document Msg
 view model =
     case model of
         Room room ->
-            viewWith RoomMsg (Room.view room)
+            Room.view room |> viewWith RoomMsg
 
         Lobby lobby ->
-            viewWith LobbyMsg (Lobby.view lobby)
+            Lobby.view lobby |> viewWith LobbyMsg
 
         Party party ->
-            viewWith PartyMsg (Party.view party)
+            Party.view party |> viewWith PartyMsg
 
         Redirect _ ->
             { title = "Redirecting...", body = [] }
-
-
-viewWith : (subMsg -> Msg) -> { title : String, content : Html subMsg } -> Document Msg
-viewWith toMsg { title, content } =
-    { title = title
-    , body = [ content |> Html.map toMsg ]
-    }
 
 
 
@@ -95,13 +89,6 @@ update msg model =
 
 
 -- helpers for sub-models
-
-
-updateWith : (subModel -> Model) -> (subMsg -> Msg) -> Model -> ( subModel, Cmd subMsg ) -> ( Model, Cmd Msg )
-updateWith toModel toMsg _ ( subModel, subCmd ) =
-    ( toModel subModel
-    , Cmd.map toMsg subCmd
-    )
 
 
 toSession : Model -> Session

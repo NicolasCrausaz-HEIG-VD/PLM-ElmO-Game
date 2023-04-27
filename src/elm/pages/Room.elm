@@ -200,8 +200,6 @@ update msg model =
 -- VIEW HELPER FUNCTIONS
 
 
-
-
 viewGame : Game.Model -> Html Msg
 viewGame game =
     case Game.getCurrentPlayer game of
@@ -295,6 +293,7 @@ viewChoice player card _ =
                 ]
             ]
         ]
+
 
 
 -- VIEW
