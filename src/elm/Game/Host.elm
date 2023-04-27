@@ -3,13 +3,13 @@ port module Game.Host exposing (..)
 import Dict
 import Game.Card exposing (PlayableCard)
 import Game.Client
+import Game.Color
 import Game.Core
-import Pages.Room exposing (Msg(..))
-import Utils exposing (UUID)
-import Session exposing (SessionType)
 import Json.Decode as D
 import Json.Encode as E
-import Session exposing (Session)
+import Pages.Room exposing (Msg(..))
+import Session exposing (Session, SessionType)
+import Utils exposing (UUID)
 
 
 type alias Game =
@@ -30,9 +30,9 @@ needToUpdate updated game =
 
 onAction : Action -> Game -> ( Game, Bool )
 onAction action game =
-    case action of
+    case Debug.log "[HOST] onAction" action of
         PlayerJoin uuid name ->
-            game |> Game.Core.addPlayer (uuid, name) |> needToUpdate True
+            game |> Game.Core.addPlayer ( uuid, name ) |> needToUpdate True
 
         PlayerLeave uuid ->
             game |> Game.Core.removePlayer uuid |> needToUpdate True
@@ -116,25 +116,40 @@ type HostMsg
     | SendData Game
 
 
-
 setHostGame : Game.Core.Model -> { a | session : Session } -> { a | session : Session }
 setHostGame game model =
     case model.session.session of
         Session.Host _ roomData ->
             { model | session = model.session |> Session.update (Session.Host game roomData) }
+
         _ ->
             model
+
 
 getHostGame : { a | session : Session } -> Maybe Game.Core.Model
 getHostGame model =
     case model.session.session of
         Session.Host game _ ->
             Just game
+
         _ ->
             Nothing
 
 
-update : HostMsg -> { a | session : Session } -> ({ a | session : Session }, Cmd msg)
+getCurrentPlayer : { a | session : Session } -> UUID
+getCurrentPlayer model =
+    case model.session.session of
+        Session.Host _ roomData ->
+            roomData.playerUUID
+
+        Session.Client roomData ->
+            roomData.playerUUID
+
+        _ ->
+            ""
+
+
+update : HostMsg -> { a | session : Session } -> ( { a | session : Session }, Cmd msg )
 update msg model =
     case ( msg, model |> getHostGame ) of
         ( IncomingAction data, Just host ) ->
@@ -151,12 +166,7 @@ update msg model =
                     ( model, Debug.log ("Error decoding incoming action: " ++ Debug.toString err) Cmd.none )
 
         ( SendData host, Just _ ) ->
-            case toClient host "uuid1" of
-                Just clientGame ->
-                    ( model |> setHostGame host, outgoingData (Game.Client.encodeModel clientGame) )
-
-                Nothing ->
-                    ( model, Debug.log "Tried to send data but no client game was available" Cmd.none )
+            ( model |> setHostGame host, outgoingData (encodeGame host) )
 
         _ ->
             ( model, Cmd.none )
@@ -164,6 +174,7 @@ update msg model =
 
 
 -- DECODERS
+
 
 encodeAction : Action -> E.Value
 encodeAction action =
@@ -187,6 +198,7 @@ encodeAction action =
                 , ( "uuid", E.string uuid )
                 , ( "name", E.string name )
                 ]
+
         PlayerLeave uuid ->
             E.object
                 [ ( "action", E.string "playerLeave" )
@@ -213,10 +225,31 @@ decodeAction =
                         D.map2 PlayerJoin
                             (D.field "uuid" D.string)
                             (D.field "name" D.string)
-                    
+
                     "playerLeave" ->
                         D.map PlayerLeave
                             (D.field "uuid" D.string)
+
                     _ ->
                         D.fail ("Unknown action: " ++ action)
             )
+
+
+encodePlayer : Game.Core.Player -> E.Value
+encodePlayer player =
+    E.object
+        [ ( "name", E.string player.name )
+        , ( "uuid", E.string player.uuid )
+        , ( "hand", E.list Game.Card.encodeCard player.hand )
+        ]
+
+
+encodeGame : Game -> E.Value
+encodeGame game =
+    E.object
+        [ ( "players", E.list encodePlayer game.players )
+        , ( "currentPlayer", Utils.maybeEncode E.string (Maybe.map (\p -> p.uuid) (game |> Game.Core.getCurrentPlayer |> Tuple.first)) )
+        , ( "drawStack", E.int (game.drawStack |> List.length) )
+        , ( "activeCard", Utils.maybeEncode Game.Card.encodeCard game.activeCard )
+        , ( "activeColor", Utils.maybeEncode Game.Color.encodeColor game.activeColor )
+        ]

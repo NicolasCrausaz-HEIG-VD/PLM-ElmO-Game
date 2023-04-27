@@ -6,13 +6,13 @@ import Game.CardView
 import Game.Client
 import Game.Color
 import Game.Host
-import Html exposing (Html, button, div, img, li, text)
-import Html.Attributes exposing (class, disabled, src, style)
+import Html exposing (Html, button, div, img, li, span, text)
+import Html.Attributes exposing (class, classList, disabled, src, style)
 import Html.Events exposing (onClick)
 import Json.Decode as D
 import Json.Encode as E
-import Session exposing (Session)
 import Route exposing (Route)
+import Session exposing (Session)
 
 
 
@@ -30,17 +30,21 @@ type alias Model =
     , game : Maybe Game.Client.Model
     }
 
+
 initModel : Session -> Model
 initModel session =
     { session = session, game = Nothing, state = Playing }
+
 
 init : Session -> ( Model, Cmd Msg )
 init session =
     case session.session of
         Session.NotConnected ->
             ( initModel session, Route.replaceUrl session.key Route.Lobby )
+
         _ ->
-            ( initModel session , outgoingAction (Game.Host.encodeAction (Game.Host.PlayerJoin "uuid1" "My Name")) )
+            ( initModel session, Cmd.none )
+
 
 
 -- PORTS
@@ -69,6 +73,7 @@ type Msg
     = NoOp
     | HostMsg Game.Host.HostMsg
     | ClientMsg ClientMsg
+
 
 clientUpdate : ClientMsg -> Model -> ( Model, Cmd Msg )
 clientUpdate msg model =
@@ -122,19 +127,19 @@ update msg model =
 -- VIEW
 
 
-displayDistantPlayer : Game.Client.DistantPlayer -> Html ClientMsg
-displayDistantPlayer player =
-    div [ class "player" ]
-        [ text player.name
+displayDistantPlayer : Game.Client.Model -> Game.Client.DistantPlayer -> Html ClientMsg
+displayDistantPlayer model player =
+    div [ class "player", classList [ ( "active", model.currentPlayer == player.uuid ) ] ]
+        [ span [ class "player-name" ] [ text player.name ]
         , div [ class "cards" ]
             (List.repeat player.cards (Game.CardView.emptyView [ class "card" ]))
         ]
 
 
-displayPlayerDeck : Game.Client.LocalPlayer -> Game.Client.Model -> Html ClientMsg
-displayPlayerDeck player model =
-    div [ class "player-deck" ]
-        [ text player.name
+displayPlayerDeck : Game.Client.Model -> Game.Client.LocalPlayer -> Html ClientMsg
+displayPlayerDeck model player =
+    div [ class "player-deck", classList [ ( "active", model.currentPlayer == player.uuid ) ] ]
+        [ span [ class "player-name" ] [ text player.name ]
         , div [ class "cards" ]
             (List.map (\card -> Game.CardView.cardView [ class "card", onClick (ClickCard card), disabled (not (Game.Card.canPlayCard card ( model.activeCard, model.activeColor ))) ] card) player.hand)
         ]
@@ -151,8 +156,8 @@ displayDrawStack stack =
 viewGame : Game.Client.Model -> Html ClientMsg
 viewGame model =
     div [ class "game" ]
-        [ div [ class "topbar" ] (List.map displayDistantPlayer (Dict.values model.distantPlayers))
-        , displayPlayerDeck model.localPlayer model
+        [ div [ class "topbar" ] (List.map (displayDistantPlayer model) (Dict.values model.distantPlayers))
+        , displayPlayerDeck model model.localPlayer
         , div [ class "center" ]
             [ displayDrawStack model.drawStack
             , div [ class "active-card" ]

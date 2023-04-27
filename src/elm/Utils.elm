@@ -1,8 +1,8 @@
 module Utils exposing (..)
 
+import Html
 import Json.Decode as D
 import Json.Encode as E
-import Html
 
 
 
@@ -19,6 +19,7 @@ type alias Code =
 
 type alias RoomData =
     { code : Code
+    , playerUUID : UUID
     }
 
 
@@ -46,6 +47,8 @@ viewWith toMsg { title, content } =
 
 
 -- Encode/decode maybe
+
+
 maybeEncode : (a -> E.Value) -> Maybe a -> E.Value
 maybeEncode encoder maybeValue =
     case maybeValue of

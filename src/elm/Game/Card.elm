@@ -1,8 +1,8 @@
 module Game.Card exposing (..)
 
+import Game.Color as Color exposing (Color)
 import Json.Decode as D
 import Json.Encode as E
-import Game.Color as Color exposing (Color)
 import Utils exposing (decodeMaybe)
 
 
@@ -160,8 +160,7 @@ canPlayCard playedCard ( maybeActiveCard, maybeActiveColor ) =
             False
 
 
-
-encodeCard :Card -> E.Value
+encodeCard : Card -> E.Value
 encodeCard card =
     E.string (toString card)
 
@@ -169,7 +168,6 @@ encodeCard card =
 decodeCard : D.Decoder Card
 decodeCard =
     decodeMaybe D.string fromString
-
 
 
 encodePlayableCard : PlayableCard -> E.Value

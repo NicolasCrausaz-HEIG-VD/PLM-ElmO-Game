@@ -1,43 +1,38 @@
 import { DataConnection, Peer } from 'peerjs'
 import Emittery from 'emittery'
 
-const PREFIX = 'bGEgYmFuZGUgZGVzIGNyYWNrcyBlc3QgZGUgcmV0b3Vy';
-
-function generateId() {
-  const alphabet = 'ABCEDFGHJKLMNPQRSTUVWXYZ';
-  const code = Array.from({length: 4}, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('');
-  return `${PREFIX}-${code}`
+type NetworkOptions<TData,TEvent> = {
+  metadata?: TData;
+  middleware?: (this: Network<TData,TEvent>, conn: DataConnection) => boolean;
 }
 
-function parseId(id: string) {
-  return id.replace(`${PREFIX}-`, '');
+type Message<TEvent = Record<string, any>> = {
+  channel: keyof TEvent;
+  data: TEvent[keyof TEvent];
 }
 
-type NetworkEvent<T> = {
-  data: T;
-  newConnection: DataConnection;
+export class Network<TData = unknown,TEvent = Record<string, any>> extends Emittery<{
+  newConnection: { conn: DataConnection; metadata: TData };
   removeConnection: DataConnection;
-}
-
-
-type Middleware = (conn: DataConnection) => boolean;
-type NetworkOptions<T> = {
-  middleware?: (this: Network<T>, conn: DataConnection) => boolean;
-}
-
-export class Network<T> extends Emittery<NetworkEvent<T>> {
+}> {
   private peer: Peer;
-  private connections: DataConnection[] = [];
+  private connections = new Map<string, DataConnection>();
   private readonly isReady: Promise<void>
+  private readonly metadata?: TData;
 
-  public constructor({middleware}: NetworkOptions<T> = {}) {
+  protected channelEmitter = new Emittery<TEvent>();
+
+  protected handleMessage({channel, data}: Message<TEvent>) {
+    this.channelEmitter.emit(channel, data);
+  }
+
+  public constructor({middleware, metadata}: NetworkOptions<TData,TEvent> = {}) {
     super();
-    this.peer = new Peer(generateId());
+    this.metadata = metadata;
+    this.peer = new Peer();
     this.isReady = new Promise<void>((resolve) => {
       this.peer.once('open', () => {
-        console.log('Ready', this.peer.id);
         this.peer.on('connection', (conn) => {
-          console.log('connection', conn);
           const isAllowed = middleware?.call(this, conn) ?? true;
           if(isAllowed) {
             this.addConnection(conn);
@@ -54,7 +49,7 @@ export class Network<T> extends Emittery<NetworkEvent<T>> {
   public async onReady(cb: (code: string) => void): Promise<string>;
   public async onReady(cb?: (code: string) => void): Promise<string>{
     await this.isReady;
-    const code = parseId(this.peer.id);
+    const code = this.peer.id;
     if (cb) {
       cb(code);
     }
@@ -62,24 +57,28 @@ export class Network<T> extends Emittery<NetworkEvent<T>> {
   }
 
   private addConnection(conn: DataConnection) {
-    void this.emit('newConnection', conn);
-    this.connections.push(conn);
+    void this.emit('newConnection', {
+      conn,
+      metadata: conn.metadata,
+    });
+
+    this.connections.set(conn.peer, conn);
     conn.once('close', () => {
-      console.log('close', conn);
-      this.connections = this.connections.filter((c) => c.peer !== conn.peer);
+      this.connections.delete(conn.peer);
       void this.emit('removeConnection', conn);
     });
     conn.on('data', (data: unknown) => {
-      void this.emit('data', data as T);
+      this.handleMessage(data as Message<TEvent>);
     });
   }
 
   public async connect(code: string) {
     await this.isReady;
-    const conn = this.peer.connect(`${PREFIX}-${code}`);
+    const conn = this.peer.connect(code, {
+      metadata: this.metadata,
+    });
     return new Promise<DataConnection>((resolve, reject) => {
       conn.once('open', () => {
-        console.log('connected', conn);
         this.addConnection(conn);
         resolve(conn);
       });
@@ -90,25 +89,35 @@ export class Network<T> extends Emittery<NetworkEvent<T>> {
     });
   }
 
-  public async send(data: T) {
-    await this.isReady;
-    this.connections.forEach((conn) => {
-      conn.send(data);
-    });
-  }
-
   public getConnections() {
     return this.connections;
   }
 
   public getPeers() {
     return [
-      parseId(this.peer.id),
-      ...this.connections.map((conn) => parseId(conn.peer)),
+      this.peer.id,
+      ...Array.from(this.connections.keys())
     ]
   }
 
   public getPeerId() {
-    return parseId(this.peer.id);
+    return this.peer.id;
   }
+
+  public send<TChannel extends keyof TEvent>(peerId: string, channel: TChannel, data: TEvent[TChannel]) {
+    if(peerId === this.peer.id) {
+      this.channelEmitter.emit(channel, data);
+    }else{
+      this.connections.get(peerId)?.send({channel, data});
+    }
+  }
+
+  public channel<TChannel extends keyof TEvent>(channel: TChannel) {
+		return {
+			on: (cb: (data: TEvent[TChannel]) => void) => this.channelEmitter.on(channel, cb),
+			send: (peerId: string, data: TEvent[TChannel]) => {
+				this.send(peerId, channel, data);
+			},
+		};
+	}
 }

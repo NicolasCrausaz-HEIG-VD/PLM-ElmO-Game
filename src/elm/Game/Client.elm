@@ -4,9 +4,9 @@ import Dict exposing (Dict)
 import Game.Card exposing (Card, PlayableCard(..))
 import Game.Color exposing (Color)
 import Game.Core exposing (Hand, Player, allCards)
-import Utils exposing (UUID)
 import Json.Decode as D
 import Json.Encode as E
+import Utils exposing (UUID)
 
 
 type alias DistantPlayer =
@@ -63,7 +63,6 @@ defaultGameModel =
     , activeCard = List.head allCards
     , activeColor = Just Game.Color.Red
     }
-
 
 
 encodeDistantPlayer : DistantPlayer -> E.Value

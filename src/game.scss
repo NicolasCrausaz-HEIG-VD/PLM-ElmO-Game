@@ -12,6 +12,40 @@
     align-items: center;
     border-radius: 20px;
     padding: 20px;
+    button {
+      width: 100%;
+    }
+
+    & > * {
+      margin: 10px;
+    }
+
+    .tabs {
+      width: 100%;
+      display: flex;
+      justify-content: space-evenly;
+      & > * {
+        margin: 10px;
+      }
+    }
+
+    .container {
+      width: 100%;
+      display: flex;
+      justify-content: space-evenly;
+      align-items: center;
+      flex-direction: column;
+      & > * {
+        margin: 10px;
+      }
+    }
+
+    input {
+      text-align: center;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid;
+    }
   }
 
   &:hover {
@@ -23,12 +57,8 @@
     margin: 10px;
   }
 
-  .title {
-    font-size: 40px;
-    color: white;
-    font-weight: bold;
-    text-align: center;
-    margin-bottom: 30px;
+  img.title {
+    transform: rotate(-10deg) translate(20px, -80px);
   }
 
   ul {
@@ -46,37 +76,115 @@
 }
 
 .game {
+  position: fixed;
   width: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
 
   .player-deck {
-    position: absolute;
+    position: fixed;
     display: flex;
+    width: 100%;
     flex-direction: column;
     bottom: 0;
+    z-index: 10;
+
+    .player-name {
+      text-align: center;
+      font-size: 20px;
+      margin: 10px;
+    }
+
     & .card {
       transition: all 0.1s ease;
       transform-origin: bottom center;
       margin: 0 -20px;
       &:hover {
         margin: 0;
-        transform: scale(2) translateY(-10px);
+        transform: scale(1.5) translateY(-10px);
         z-index: 100;
+      }
+    }
+
+    &.active {
+      .player-name {
+        animation: pulse 1s infinite;
+        font-weight: bolder;
+        &::before {
+          margin: 0 5px;
+          content: "👉";
+        }
+        &::after {
+          margin: 0 5px;
+          content: "👈";
+        }
+      }
+    }
+
+    .cards{
+      transition: all 0.5s ease;
+      transform: translateY(50%);
+      img {
+        transition: all 0.5s ease;
+        height: 150px;
+      }
+    }
+    &:hover {
+      .cards{
+        transform: translateY(0%);
+        img {
+          height: 200px;
+        }
       }
     }
   }
 
   .player {
     margin: 0 15px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    padding: 10px;
+
+    img {
+      height: 80px;
+    }
+
+    & > * {
+      margin: 5px;
+    }
+
+    .player-name {
+      text-align: center;
+      font-size: 20px;
+    }
+
     & .card {
       transition: all 0.1s ease;
-      margin: 0 -15px;
-      &:hover {
-        margin: 0;
-        transform: scale(1.25);
-        z-index: 100;
+      margin: 0 -20px;
+    }
+
+    &:hover .card {
+      margin: 0 -10px;
+    }
+
+    &.active {
+      border: 3px solid rgba(255, 255, 255, 0.5);
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+
+      .player-name {
+        animation: pulse 1s infinite;
+        font-weight: bolder;
+        &::before {
+          margin: 0 5px;
+          content: "👉";
+        }
+        &::after {
+          margin: 0 5px;
+          content: "👈";
+        }
       }
     }
   }
@@ -111,6 +219,9 @@
         left: 0;
         z-index: 3;
         opacity: 1;
+        img {
+          height: 150px;
+        }
       }
 
       .card:first-child {
@@ -138,4 +249,25 @@
     }
 
   }
+
+  .active-card {
+    .card img {
+        height: 250px;
+    }
+  }
+}
+
+
+@keyframes pulse {
+	0% {
+		transform: scale(0.95);
+	}
+
+	70% {
+		transform: scale(1);
+	}
+
+	100% {
+		transform: scale(0.95);
+	}
 }

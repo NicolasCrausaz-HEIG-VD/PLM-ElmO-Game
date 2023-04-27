@@ -4,6 +4,7 @@ import Json.Decode as D
 import Json.Encode as E
 import Utils exposing (decodeMaybe)
 
+
 type Color
     = Red
     | Blue
