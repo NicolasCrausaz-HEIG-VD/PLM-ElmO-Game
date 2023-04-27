@@ -27,7 +27,7 @@ needToUpdate updated game =
 
 onAction : Action -> Game -> ( Game, Bool )
 onAction action game =
-    case Debug.log "[HOST] got action" action of
+    case action of
         PlayerJoin uuid name ->
             game |> Game.Core.addPlayer ( uuid, name ) |> needToUpdate True
 
@@ -126,8 +126,8 @@ update msg model =
                         ( newHost, _ ) ->
                             ( model |> setHostGame newHost, Cmd.none )
 
-                Err err ->
-                    ( model, Debug.log ("Error decoding incoming action: " ++ Debug.toString err) Cmd.none )
+                Err _ ->
+                    ( model, Cmd.none )
 
         ( SendData host, Just _ ) ->
             ( model |> setHostGame host, outgoingData (encodeGame host) )

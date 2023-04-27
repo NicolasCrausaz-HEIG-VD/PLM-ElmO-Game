@@ -100,15 +100,15 @@ clientUpdate msg model =
             ( { model | state = state }, Cmd.none )
 
         ( SendAction action, _ ) ->
-            ( model, outgoingAction (Game.Host.encodeAction (Debug.log "[CLIENT] send action" action)) )
+            ( model, outgoingAction (Game.Host.encodeAction action) )
 
         ( IncomingData data, _ ) ->
             case D.decodeValue Game.Client.decodeModel data of
                 Ok newGame ->
-                    ( { model | game = Just (Debug.log "[CLIENT] update" newGame) }, Cmd.none )
+                    ( { model | game = Just newGame }, Cmd.none )
 
-                Err err ->
-                    ( model, Debug.log ("Error decoding incoming data: " ++ Debug.toString err) Cmd.none )
+                Err _ ->
+                    ( model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
