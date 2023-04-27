@@ -1,26 +1,28 @@
 port module Pages.Lobby exposing (..)
 
-import Html exposing (Html, button, div, img, input, li, text, ul)
+import Game.Core
+import Html exposing (Html, button, code, div, img, input, li, text, ul)
 import Html.Attributes exposing (class, placeholder, src, value)
 import Html.Events exposing (onClick, onInput)
 import Route
-import Session exposing (RoomData(..), Session)
+import Session exposing (Session)
+import Utils exposing (Code)
 
 
 
 -- PORTS
 
 
-port joinRoom : String -> Cmd msg
+port joinRoom : Code -> Cmd msg
 
 
-port joinedRoom : (String -> msg) -> Sub msg
+port joinedRoom : (Code -> msg) -> Sub msg
 
 
 port requestRoomCode : () -> Cmd msg
 
 
-port createRoom : (String -> msg) -> Sub msg
+port createRoom : (Code -> msg) -> Sub msg
 
 
 
@@ -30,8 +32,8 @@ port createRoom : (String -> msg) -> Sub msg
 type alias Model =
     { session : Session
     , isHost : Bool
-    , code : Maybe String
-    , hostCode : Maybe String
+    , code : Maybe Code
+    , hostCode : Maybe Code
     }
 
 
@@ -85,10 +87,11 @@ view model =
 type Msg
     = HostGame
     | JoinGame
-    | StartingGame String
+    | StartHostGame Code Game.Core.Model
+    | StartClientGame Code
     | StartGame
-    | CodeInput String
-    | SetHostCode String
+    | CodeInput Code
+    | SetHostCode Code
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -104,7 +107,7 @@ update msg model =
             case getRoomCode model of
                 Just code ->
                     if model.isHost then
-                        update (StartingGame code) model
+                        ( model, Game.Core.newGame (StartHostGame code) )
 
                     else
                         ( model, joinRoom code )
@@ -118,8 +121,11 @@ update msg model =
         SetHostCode code ->
             ( { model | hostCode = Just code }, Cmd.none )
 
-        StartingGame code ->
-            ( model, Route.replaceUrl (Session.navKey model.session) (Route.Room code) )
+        StartClientGame code ->
+            ( { model | session = model.session |> Session.update (Session.Client { code = code }) }, Route.replaceUrl model.session.key (Route.Party code) )
+
+        StartHostGame code gameModel ->
+            ( { model | session = model.session |> Session.update (Session.Host gameModel { code = code }) }, Route.replaceUrl model.session.key (Route.Party code) )
 
 
 
@@ -143,7 +149,7 @@ subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
         [ createRoom SetHostCode
-        , joinedRoom StartingGame
+        , joinedRoom StartClientGame
         ]
 
 
@@ -153,4 +159,4 @@ subscriptions _ =
 
 toSession : Model -> Session
 toSession model =
-    Session.setRoomData (RoomData { isHost = model.isHost, code = Maybe.withDefault "" (getRoomCode model) }) model.session
+    model.session

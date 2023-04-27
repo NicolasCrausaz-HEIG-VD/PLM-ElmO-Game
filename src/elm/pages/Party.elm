@@ -4,21 +4,15 @@ import Dict exposing (Dict)
 import Game.Card
 import Game.CardView
 import Game.Client
-import Game.Core
+import Game.Color
 import Game.Host
-import Game.JSON
-import Html exposing (Html, div, text)
-import Html.Attributes exposing (class, disabled)
+import Html exposing (Html, button, div, img, li, text)
+import Html.Attributes exposing (class, disabled, src, style)
 import Html.Events exposing (onClick)
 import Json.Decode as D
 import Json.Encode as E
 import Session exposing (Session)
-import Html exposing (button)
-import Html exposing (img)
-import Html exposing (li)
-import Html.Attributes exposing (src)
-import Html.Attributes exposing (style)
-import Game.Color
+import Route exposing (Route)
 
 
 
@@ -33,29 +27,26 @@ type GameState
 type alias Model =
     { session : Session
     , state : GameState
-    , host : Maybe Game.Host.Game
     , game : Maybe Game.Client.Model
     }
 
+initModel : Session -> Model
+initModel session =
+    { session = session, game = Nothing, state = Playing }
 
 init : Session -> ( Model, Cmd Msg )
 init session =
-    case session of
+    case session.session of
+        Session.NotConnected ->
+            ( initModel session, Route.replaceUrl session.key Route.Lobby )
         _ ->
-            ( { session = session, game = Nothing, host = Nothing, state = Playing }, Game.Core.newGame (HostMsg << StartHost) )
-
+            ( initModel session , outgoingAction (Game.Host.encodeAction (Game.Host.PlayerJoin "uuid1" "My Name")) )
 
 
 -- PORTS
 
 
 port incomingData : (E.Value -> msg) -> Sub msg
-
-
-port outgoingData : E.Value -> Cmd msg
-
-
-port incomingAction : (E.Value -> msg) -> Sub msg
 
 
 port outgoingAction : E.Value -> Cmd msg
@@ -74,27 +65,20 @@ type ClientMsg
     | SendAction Game.Host.Action
 
 
-type HostMsg
-    = IncomingAction E.Value
-    | SendData  Game.Host.Game
-    | StartHost Game.Host.Game
-
-
 type Msg
     = NoOp
-    | HostMsg HostMsg
+    | HostMsg Game.Host.HostMsg
     | ClientMsg ClientMsg
-
 
 clientUpdate : ClientMsg -> Model -> ( Model, Cmd Msg )
 clientUpdate msg model =
     case ( msg, model.game ) of
         ( DrawCard, Just game ) ->
-            clientUpdate (SendAction (Game.Host.DrawCard game.localPlayer.uuid)) ( { model | state = Playing })
-        
+            clientUpdate (SendAction (Game.Host.DrawCard game.localPlayer.uuid)) { model | state = Playing }
+
         ( PlayCard card, Just game ) ->
-            clientUpdate (SendAction (Game.Host.PlayCard game.localPlayer.uuid card)) ( { model | state = Playing } ) 
-        
+            clientUpdate (SendAction (Game.Host.PlayCard game.localPlayer.uuid card)) { model | state = Playing }
+
         ( ClickCard card, Just _ ) ->
             case card of
                 Game.Card.WildCard _ ->
@@ -102,13 +86,15 @@ clientUpdate msg model =
 
                 _ ->
                     clientUpdate (PlayCard (Game.Card.StandardCard card)) model
+
         ( SetState state, _ ) ->
             ( { model | state = state }, Cmd.none )
+
         ( SendAction action, _ ) ->
-            ( model, outgoingAction (Game.JSON.encodeAction action))
+            ( model, outgoingAction (Game.Host.encodeAction action) )
 
         ( IncomingData data, _ ) ->
-            case D.decodeValue Game.JSON.decodeModel data of
+            case D.decodeValue Game.Client.decodeModel data of
                 Ok newGame ->
                     ( { model | game = Just newGame }, Cmd.none )
 
@@ -119,51 +105,15 @@ clientUpdate msg model =
             ( model, Cmd.none )
 
 
-hostUpdate : HostMsg -> Model -> ( Model, Cmd Msg )
-hostUpdate msg model =
-    case ( msg, model.host ) of
-        ( IncomingAction data, Just host ) ->
-            case D.decodeValue Game.JSON.decodeAction data of
-                Ok action ->
-                    case Game.Host.onAction action host of
-                        (newHost, True) ->
-                            hostUpdate (SendData newHost) model
-                        (newHost, _) -> 
-                            ( { model | host = Just newHost }, Cmd.none )
-
-                Err err ->
-                    ( model, Debug.log ("Error decoding incoming action: " ++ Debug.toString err) Cmd.none )
-
-        ( SendData host, Just _ ) ->
-            case Game.Host.toClient host "uuid1" of
-                Just clientGame ->
-                    ( { model | host = Just host }, outgoingData (Game.JSON.encodeModel clientGame) )
-
-                Nothing ->
-                    ( model, Debug.log "Tried to send data but no client game was available" Cmd.none )
-
-        ( StartHost host, _ ) ->
-            let
-                game =
-                    host
-                        |> Game.Core.addPlayer ( "uuid1", "Player 1" )
-                        |> Game.Core.addPlayer ( "uuid2", "Player 2" )
-                        |> Game.Core.addPlayer ( "uuid3", "Player 3" )
-                        |> Game.Core.addPlayer ( "uuid4", "Player 4" )
-            in
-            ( { model | host = Just game, game = Game.Host.toClient game "uuid1" }, Cmd.none )
-
-        _ ->
-            ( model, Cmd.none )
-
-
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         HostMsg hostMsg ->
-            hostUpdate hostMsg model
+            Game.Host.update hostMsg model
+
         ClientMsg clientMsg ->
             clientUpdate clientMsg model
+
         _ ->
             ( model, Cmd.none )
 
@@ -198,8 +148,6 @@ displayDrawStack stack =
         ]
 
 
-
-
 viewGame : Game.Client.Model -> Html ClientMsg
 viewGame model =
     div [ class "game" ]
@@ -217,6 +165,7 @@ viewGame model =
                 ]
             ]
         ]
+
 
 viewChoice : Game.Card.Card -> Html ClientMsg
 viewChoice card =
@@ -278,11 +227,13 @@ view : Model -> { title : String, content : Html Msg }
 view model =
     { title = "Party Elmo"
     , content =
-        case (model.game, model.state) of
+        case ( model.game, model.state ) of
             ( Just game, Playing ) ->
                 viewGame game |> Html.map ClientMsg
+
             ( Just _, SelectColor card ) ->
                 viewChoice card |> Html.map ClientMsg
+
             ( Nothing, _ ) ->
                 div [] [ text "Loading..." ]
     }
@@ -296,7 +247,7 @@ subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
         [ incomingData (ClientMsg << IncomingData)
-        , incomingAction (HostMsg << IncomingAction)
+        , Game.Host.incomingAction (HostMsg << Game.Host.IncomingAction)
         ]
 
 

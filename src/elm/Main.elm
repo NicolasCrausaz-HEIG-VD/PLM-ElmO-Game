@@ -9,7 +9,7 @@ import Pages.Room as Room
 import Route exposing (Route)
 import Session exposing (Session)
 import Url exposing (Url)
-import Utils.Utils exposing (updateWith, viewWith)
+import Utils exposing (updateWith, viewWith)
 
 
 type Model
@@ -66,7 +66,7 @@ update msg model =
         ( LinkClicked urlRequest, _ ) ->
             case urlRequest of
                 Browser.Internal url ->
-                    ( model, Nav.pushUrl (Session.navKey (toSession model)) (Url.toString url) )
+                    ( model, Nav.pushUrl (toSession model).key (Url.toString url) )
 
                 Browser.External _ ->
                     ( model, Cmd.none )
@@ -122,7 +122,7 @@ changeRouteTo route model =
             Lobby.init session
                 |> updateWith Lobby LobbyMsg model
 
-        Just Route.Party ->
+        Just (Route.Party _) ->
             Party.init session
                 |> updateWith Party PartyMsg model
 

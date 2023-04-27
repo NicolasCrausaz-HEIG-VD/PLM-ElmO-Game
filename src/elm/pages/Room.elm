@@ -55,13 +55,13 @@ defaultModel session =
 
 init : Session -> ( Model, Cmd Msg )
 init session =
-    case session of
-        Session.Client _ _ ->
+    case session.session of
+        Session.Client _ ->
             ( defaultModel session, Cmd.none )
 
         _ ->
             -- If the session is not connected, redirect to lobby (middleware)
-            ( defaultModel session, Route.replaceUrl (Session.navKey session) Route.Lobby )
+            ( defaultModel session, Route.replaceUrl session.key Route.Lobby )
 
 
 
@@ -176,7 +176,7 @@ updateNoGame msg model =
             )
 
         BackLobby ->
-            ( model, Route.replaceUrl (Session.navKey model.session) Route.Lobby )
+            ( model, Route.replaceUrl model.session.key Route.Lobby )
 
         _ ->
             ( model, Cmd.none )

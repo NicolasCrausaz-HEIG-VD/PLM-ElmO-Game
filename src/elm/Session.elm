@@ -2,39 +2,33 @@ module Session exposing (..)
 
 import Browser.Navigation as Nav
 import Game.Core
+import Utils exposing (RoomData)
 
 
-type RoomData
-    = RoomData
-        { isHost : Bool
-        , code : String
-        }
+type SessionType
+    = NotConnected
+    | Host Game.Core.Model RoomData
+    | Client RoomData
 
 
-type Session
-    = NotConnected Nav.Key
-    | Host Nav.Key RoomData Game.Core.Model
-    | Client Nav.Key RoomData
+type alias Session =
+    { key : Nav.Key
+    , session : SessionType
+    }
 
 
 create : Nav.Key -> Session
-create =
-    NotConnected
+create key =
+    { key = key
+    , session = NotConnected
+    }
 
 
-navKey : Session -> Nav.Key
-navKey session =
-    case session of
-        NotConnected key ->
-            key
-
-        Host key _ _ ->
-            key
-
-        Client key _ ->
-            key
+update : SessionType -> Session -> Session
+update sessionType session =
+    { session | session = sessionType }
 
 
-setRoomData : RoomData -> Session -> Session
-setRoomData data session =
-    Client (navKey session) data
+getKey : Session -> Nav.Key
+getKey session =
+    session.key

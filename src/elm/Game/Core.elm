@@ -5,6 +5,7 @@ import Game.Color exposing (Color(..))
 import List.Extra
 import Random
 import Random.List
+import Utils exposing (UUID)
 
 
 type alias Hand =
@@ -13,10 +14,6 @@ type alias Hand =
 
 type alias Draw =
     List Card
-
-
-type alias UUID =
-    String
 
 
 type alias Player =
@@ -225,12 +222,12 @@ emptyGame =
 
 
 newGame : (Model -> msg) -> Cmd msg
-newGame toMsg =
+newGame msg =
     let
         updateModel shuffledCards =
             { emptyGame | drawStack = shuffledCards } |> getFirstCard
     in
-    Random.generate (toMsg << updateModel) (Random.List.shuffle allCards)
+    Random.generate (msg << updateModel) (Random.List.shuffle allCards)
 
 
 getCurrentPlayer : Model -> ( Maybe Player, List Player )

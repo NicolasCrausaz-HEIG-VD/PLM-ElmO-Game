@@ -1,10 +1,15 @@
-module Game.Host exposing (..)
+port module Game.Host exposing (..)
 
 import Dict
 import Game.Card exposing (PlayableCard)
 import Game.Client
-import Game.Core exposing (UUID)
+import Game.Core
 import Pages.Room exposing (Msg(..))
+import Utils exposing (UUID)
+import Session exposing (SessionType)
+import Json.Decode as D
+import Json.Encode as E
+import Session exposing (Session)
 
 
 type alias Game =
@@ -12,25 +17,25 @@ type alias Game =
 
 
 type Action
-    = PlayerJoin ( UUID, String )
+    = PlayerJoin UUID String
     | PlayerLeave UUID
     | PlayCard UUID PlayableCard
     | DrawCard UUID
 
 
-update : Bool -> Game -> ( Game, Bool )
-update updated game =
+needToUpdate : Bool -> Game -> ( Game, Bool )
+needToUpdate updated game =
     ( game, updated )
 
 
 onAction : Action -> Game -> ( Game, Bool )
 onAction action game =
     case action of
-        PlayerJoin player ->
-            game |> Game.Core.addPlayer player |> update True
+        PlayerJoin uuid name ->
+            game |> Game.Core.addPlayer (uuid, name) |> needToUpdate True
 
         PlayerLeave uuid ->
-            game |> Game.Core.removePlayer uuid |> update True
+            game |> Game.Core.removePlayer uuid |> needToUpdate True
 
         PlayCard uuid card ->
             case game |> Game.Core.getPlayerIfTurn uuid |> Tuple.first of
@@ -43,13 +48,13 @@ onAction action game =
                         updatedGame
                             |> Game.Core.nextTurn
                             |> Game.Core.applyCardEffect (Game.Card.getCard card)
-                            |> update True
+                            |> needToUpdate True
 
                     else
-                        game |> update False
+                        game |> needToUpdate False
 
                 Nothing ->
-                    game |> update False
+                    game |> needToUpdate False
 
         DrawCard uuid ->
             case game |> Game.Core.getPlayerIfTurn uuid |> Tuple.first of
@@ -57,10 +62,10 @@ onAction action game =
                     game
                         |> Game.Core.drawCard 1 player
                         |> Game.Core.nextTurn
-                        |> update True
+                        |> needToUpdate True
 
                 Nothing ->
-                    game |> update False
+                    game |> needToUpdate False
 
 
 
@@ -98,3 +103,120 @@ toClient game playerUUID =
 
         _ ->
             Nothing
+
+
+port outgoingData : E.Value -> Cmd msg
+
+
+port incomingAction : (E.Value -> msg) -> Sub msg
+
+
+type HostMsg
+    = IncomingAction E.Value
+    | SendData Game
+
+
+
+setHostGame : Game.Core.Model -> { a | session : Session } -> { a | session : Session }
+setHostGame game model =
+    case model.session.session of
+        Session.Host _ roomData ->
+            { model | session = model.session |> Session.update (Session.Host game roomData) }
+        _ ->
+            model
+
+getHostGame : { a | session : Session } -> Maybe Game.Core.Model
+getHostGame model =
+    case model.session.session of
+        Session.Host game _ ->
+            Just game
+        _ ->
+            Nothing
+
+
+update : HostMsg -> { a | session : Session } -> ({ a | session : Session }, Cmd msg)
+update msg model =
+    case ( msg, model |> getHostGame ) of
+        ( IncomingAction data, Just host ) ->
+            case D.decodeValue decodeAction data of
+                Ok action ->
+                    case onAction action host of
+                        ( newHost, True ) ->
+                            update (SendData newHost) model
+
+                        ( newHost, _ ) ->
+                            ( model |> setHostGame newHost, Cmd.none )
+
+                Err err ->
+                    ( model, Debug.log ("Error decoding incoming action: " ++ Debug.toString err) Cmd.none )
+
+        ( SendData host, Just _ ) ->
+            case toClient host "uuid1" of
+                Just clientGame ->
+                    ( model |> setHostGame host, outgoingData (Game.Client.encodeModel clientGame) )
+
+                Nothing ->
+                    ( model, Debug.log "Tried to send data but no client game was available" Cmd.none )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+
+-- DECODERS
+
+encodeAction : Action -> E.Value
+encodeAction action =
+    case action of
+        PlayCard uuid card ->
+            E.object
+                [ ( "action", E.string "playCard" )
+                , ( "uuid", E.string uuid )
+                , ( "card", Game.Card.encodePlayableCard card )
+                ]
+
+        DrawCard uuid ->
+            E.object
+                [ ( "action", E.string "drawCard" )
+                , ( "uuid", E.string uuid )
+                ]
+
+        PlayerJoin uuid name ->
+            E.object
+                [ ( "action", E.string "playerJoin" )
+                , ( "uuid", E.string uuid )
+                , ( "name", E.string name )
+                ]
+        PlayerLeave uuid ->
+            E.object
+                [ ( "action", E.string "playerLeave" )
+                , ( "uuid", E.string uuid )
+                ]
+
+
+decodeAction : D.Decoder Action
+decodeAction =
+    D.field "action" D.string
+        |> D.andThen
+            (\action ->
+                case action of
+                    "playCard" ->
+                        D.map2 PlayCard
+                            (D.field "uuid" D.string)
+                            (D.field "card" Game.Card.decodePlayableCard)
+
+                    "drawCard" ->
+                        D.map DrawCard
+                            (D.field "uuid" D.string)
+
+                    "playerJoin" ->
+                        D.map2 PlayerJoin
+                            (D.field "uuid" D.string)
+                            (D.field "name" D.string)
+                    
+                    "playerLeave" ->
+                        D.map PlayerLeave
+                            (D.field "uuid" D.string)
+                    _ ->
+                        D.fail ("Unknown action: " ++ action)
+            )

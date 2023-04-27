@@ -1,6 +1,9 @@
 module Game.Card exposing (..)
 
+import Json.Decode as D
+import Json.Encode as E
 import Game.Color as Color exposing (Color)
+import Utils exposing (decodeMaybe)
 
 
 type WildCardType
@@ -155,3 +158,46 @@ canPlayCard playedCard ( maybeActiveCard, maybeActiveColor ) =
 
         _ ->
             False
+
+
+
+encodeCard :Card -> E.Value
+encodeCard card =
+    E.string (toString card)
+
+
+decodeCard : D.Decoder Card
+decodeCard =
+    decodeMaybe D.string fromString
+
+
+
+encodePlayableCard : PlayableCard -> E.Value
+encodePlayableCard card =
+    case card of
+        StandardCard c ->
+            E.object
+                [ ( "card", E.string (toString c) )
+                , ( "color", E.null )
+                ]
+
+        ChoiceCard c color ->
+            E.object
+                [ ( "card", E.string (toString c) )
+                , ( "color", E.string (Color.toString color) )
+                ]
+
+
+decodePlayableCard : D.Decoder PlayableCard
+decodePlayableCard =
+    D.map2
+        (\card color ->
+            case color of
+                Just c ->
+                    ChoiceCard card c
+
+                Nothing ->
+                    StandardCard card
+        )
+        (D.field "card" decodeCard)
+        (D.field "color" (D.nullable Color.decodeColor))

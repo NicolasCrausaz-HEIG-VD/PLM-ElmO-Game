@@ -8,7 +8,7 @@ import Url.Parser as Parser exposing ((</>), Parser, oneOf)
 type Route
     = Lobby
     | Room String
-    | Party
+    | Party String
 
 
 parser : Parser (Route -> a) a
@@ -16,7 +16,7 @@ parser =
     oneOf
         [ Parser.map Lobby Parser.top
         , Parser.map Room (Parser.s "room" </> Parser.string)
-        , Parser.map Party (Parser.s "party")
+        , Parser.map Party (Parser.s "party" </> Parser.string)
         ]
 
 
@@ -44,5 +44,5 @@ routeToPieces route =
         Room code ->
             [ "room", code ]
 
-        Party ->
-            [ "party" ]
+        Party code ->
+            [ "party", code ]

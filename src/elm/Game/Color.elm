@@ -1,5 +1,8 @@
 module Game.Color exposing (..)
 
+import Json.Decode as D
+import Json.Encode as E
+import Utils exposing (decodeMaybe)
 
 type Color
     = Red
@@ -41,3 +44,13 @@ fromString string =
 
         _ ->
             Nothing
+
+
+encodeColor : Color -> E.Value
+encodeColor color =
+    E.string (toString color)
+
+
+decodeColor : D.Decoder Color
+decodeColor =
+    decodeMaybe D.string fromString
