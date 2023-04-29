@@ -1,7 +1,6 @@
 import { Elm } from './elm/Main.elm'
-import './style/game.scss'
 import './style/index.scss'
-import './style/card.scss'
+import './style/elmo.scss'
 import { Network } from './script/network'
 
 type Ports = {

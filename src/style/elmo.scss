@@ -1,0 +1,356 @@
+%card-transition {
+    transition: all 0.1s ease;
+    margin: 0 -20px;
+}
+
+%pulse-animation {
+    animation: pulse 1s infinite;
+    font-weight: bolder;
+    &::before, &::after {
+        margin: 0 5px;
+    }
+    &::before {
+        content: "👉";
+    }
+    &::after {
+        content: "👈";
+    }
+}
+
+%flex-space-evenly {
+    display: flex;
+    justify-content: space-evenly;
+    & > * {
+        margin: 10px;
+    }
+}
+
+.cards {
+    @extend %flex-space-evenly;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.card {
+    @extend %card-transition;
+    all: unset;
+    outline: 0 !important;
+    border: 0 !important;
+    perspective: 1000px;
+    user-select: none;
+    height: fit-content;
+    width: fit-content;
+
+    &:disabled {
+        cursor: not-allowed;
+        filter: grayscale(1);
+        &:hover {
+            filter: grayscale(0);
+        }
+    }
+
+    .card_inner {
+        transform-style: preserve-3d;
+        transition: transform 0.5s ease;
+        height: 100%;
+        width: 100%;
+        position: relative;
+        border-radius: 40px;
+        box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.2);
+        transform: rotateY(180deg);
+    }
+
+    .card_front,
+    .card_back {
+        backface-visibility: hidden;
+        pointer-events: none;
+    }
+
+    .card_back {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 100%;
+        transform: rotateY(180deg);
+    }
+
+    &.active, &:hover {
+        .card_inner {
+            transform: rotateY(0deg);
+        }
+    }
+}
+
+.lobby-menu {
+  border-radius: 30px;
+  margin: auto;
+  border: 1px solid;
+  padding: 15px;
+  background-color: white;
+
+  .content {
+    background-color: black;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-radius: 20px;
+    padding: 20px;
+    button {
+      width: 100%;
+    }
+
+    .tabs {
+        @extend %flex-space-evenly;
+    }
+
+    .container {
+        @extend %flex-space-evenly;
+        align-items: center;
+        flex-direction: column;
+    }
+
+    input {
+      text-align: center;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid;
+    }
+  }
+
+  &:hover {
+    box-shadow: 0px 0px 20px #e80000;
+  }
+
+  img {
+    width: 400px;
+    margin: 10px;
+  }
+
+  img.title {
+    transform: rotate(-10deg) translateX(10px);
+    margin: -80px 0 25px 0;
+  }
+
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+
+    li {
+      margin: 10px;
+      cursor: pointer;
+    }
+  }
+}
+
+.game {
+  position: fixed;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  .player-deck {
+    backdrop-filter: blur(10px);
+    border: 3px solid rgba(255, 255, 255, 0.5);
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 10px 10px 0 0;
+    position: fixed;
+    display: flex;
+    width: calc(100% - 30px);
+    flex-direction: column;
+    bottom: 0;
+    z-index: 10;
+    transition: transform 0.5s ease;
+    transform: translateY(50%);
+  
+    .player-name {
+      text-align: center;
+      font-size: 20px;
+      margin: 10px;
+      transition: margin 0.5s ease;
+    }
+
+    &.active {
+      .player-name {
+        @extend %pulse-animation;
+      }
+    }
+  
+    .cards {
+        padding: 0px 20px;
+        
+  
+    .card {
+        transition: transform 0.1s ease, margin 0.5s ease;
+        margin: 0 -20px -110px -20px;
+        transform-origin: bottom center;
+    
+        &:last-child {
+          margin: 0 -20px 0 -20px !important;
+        }
+    
+        &:hover {
+          transform: scale(1.5) translateY(-5%);
+          z-index: 100;
+    
+          & + .card {
+            transform: scale(1.25) translateY(-2.5%);
+            z-index: 99;
+    
+            & + .card {
+              transform: scale(1.125) translateY(-1%);
+              z-index: 98;
+            }
+          }
+        }
+    
+        &:has(+ .card:hover) {
+          transform: scale(1.25) translateY(-2.5%);
+          z-index: 99;
+        }
+    
+        &:has(+ .card + .card:hover) {
+          transform: scale(1.125) translateY(-1%);
+          z-index: 98;
+        }
+      }
+    
+      img {
+        transition: all 0.5s ease;
+        height: 150px;
+      }
+    }
+    
+    transition-delay: 1s;
+    &:hover {
+      transition-delay: 0s;
+      transform: translateY(0%);
+      .card {
+        margin: 0 -10px -60px -10px;
+      }
+    }
+  }
+  
+
+
+  .player {
+    margin: 0 15px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    padding: 10px;
+
+    img {
+      height: 80px;
+    }
+
+    & > * {
+      margin: 5px;
+    }
+
+    .player-name {
+      text-align: center;
+      font-size: 20px;
+    }
+
+    & .card {
+      @extend %card-transition;
+    }
+
+    &:hover .card {
+      margin: 0 -10px;
+    }
+
+    &.active {
+      border: 3px solid rgba(255, 255, 255, 0.5);
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+
+      .player-name {
+        @extend %pulse-animation;
+      }
+    }
+  }
+
+  .topbar {
+    position: fixed;
+    top: 0;
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    padding: 10px;
+    align-items: center;
+  }
+
+  .center {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .draw-stack {
+    position: absolute;
+    right: 10px;
+    .cards {
+      position: relative;
+
+      .card {
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 3;
+        opacity: 1;
+        img {
+          height: 150px;
+        }
+      }
+
+      .card:first-child {
+        opacity: 1;
+        transform: rotate(10deg);
+        position: relative;
+      }
+      .card:nth-child(2) {
+        opacity: 0.7;
+        top: 3px;
+        left: -3px;
+        z-index: 2;
+        transform: rotate(5deg);
+      }
+      .card:nth-child(3) {
+        opacity: 0.5;
+        top: 6px;
+        left: -6px;
+        z-index: 1;
+      }
+      .card:nth-child(n+4) {
+        opacity: 0;
+        z-index: 0;
+      }
+    }
+
+  }
+
+  .active-card {
+    .card img {
+        height: 250px;
+    }
+  }
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(0.95);
+    }
+    70% {
+        transform: scale(1);
+    }
+    100% {
+        transform: scale(0.95);
+    }
+}

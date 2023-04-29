@@ -71,7 +71,9 @@ export class Network<TEvent = Record<string, any>> extends Emittery<{
 
   public async connect(code: string) {
     await this.isReady;
-    const conn = this.peer.connect(code);
+    const conn = this.peer.connect(code,{
+      serialization: 'json',
+    });
     return new Promise<DataConnection>((resolve, reject) => {
       conn.once('open', () => {
         this.addConnection(conn);
