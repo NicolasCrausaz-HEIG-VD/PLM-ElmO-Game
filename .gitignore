@@ -3,3 +3,4 @@ node_modules
 .idea
 .vercel
 dist
+.DS_Store
