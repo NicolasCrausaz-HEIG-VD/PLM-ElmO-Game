@@ -7,7 +7,7 @@ import Game.Client
 import Game.Color
 import Game.Host
 import Html exposing (Html, button, div, img, li, span, text)
-import Html.Attributes exposing (class, classList, disabled, src, style)
+import Html.Attributes exposing (class, classList, disabled, id, src, style)
 import Html.Events exposing (onClick)
 import Json.Decode as D
 import Json.Encode as E
@@ -176,15 +176,14 @@ viewGame model =
         ]
 
 
-viewChoice : Game.Card.Card -> Html ClientMsg
-viewChoice card =
-    div [ class "choice-modal" ]
-        [ div [ class "content" ]
-            [ div [ class "title" ] [ text "Choose a color" ]
-            , button [ onClick (SetState Playing) ] [ text "Cancel" ]
-            , div []
-                [ li
-                    []
+viewChoice : Game.Client.Model -> Game.Card.Card -> Html ClientMsg
+viewChoice game card =
+    span []
+        [ viewGame game
+        , div [ class "modal" ]
+            [ div [ class "modal-content" ]
+                [ div [ class "title" ] [ text "Choose a color" ]
+                , div [ class "cards-choice" ]
                     [ button [ class "card active", onClick (PlayCard (Game.Card.ChoiceCard card Game.Color.Red)) ]
                         [ img
                             [ src "/cards/empty_red.svg"
@@ -193,10 +192,7 @@ viewChoice card =
                             ]
                             []
                         ]
-                    ]
-                , li
-                    []
-                    [ button [ class "card active", onClick (PlayCard (Game.Card.ChoiceCard card Game.Color.Blue)) ]
+                    , button [ class "card active", onClick (PlayCard (Game.Card.ChoiceCard card Game.Color.Blue)) ]
                         [ img
                             [ src "/cards/empty_blue.svg"
                             , style "height" "150px"
@@ -204,10 +200,7 @@ viewChoice card =
                             ]
                             []
                         ]
-                    ]
-                , li
-                    []
-                    [ button [ class "card active", onClick (PlayCard (Game.Card.ChoiceCard card Game.Color.Green)) ]
+                    , button [ class "card active", onClick (PlayCard (Game.Card.ChoiceCard card Game.Color.Green)) ]
                         [ img
                             [ src "/cards/empty_green.svg"
                             , style "height" "150px"
@@ -215,10 +208,7 @@ viewChoice card =
                             ]
                             []
                         ]
-                    ]
-                , li
-                    []
-                    [ button [ class "card active", onClick (PlayCard (Game.Card.ChoiceCard card Game.Color.Yellow)) ]
+                    , button [ class "card active", onClick (PlayCard (Game.Card.ChoiceCard card Game.Color.Yellow)) ]
                         [ img
                             [ src "/cards/empty_yellow.svg"
                             , style "height" "150px"
@@ -226,6 +216,9 @@ viewChoice card =
                             ]
                             []
                         ]
+                    ]
+                , div [ class "modal-footer" ]
+                    [ button [ id "close-modal", onClick (SetState Playing) ] [ text "Cancel" ]
                     ]
                 ]
             ]
@@ -240,8 +233,8 @@ view model =
             ( Just game, Playing ) ->
                 viewGame game |> Html.map ClientMsg
 
-            ( Just _, SelectColor card ) ->
-                viewChoice card |> Html.map ClientMsg
+            ( Just game, SelectColor card ) ->
+                viewChoice game card |> Html.map ClientMsg
 
             ( Nothing, _ ) ->
                 div [] [ text "Loading..." ]
