@@ -102,6 +102,24 @@ fromString string =
             Nothing
 
 
+toInt : Card -> Int
+toInt card =
+    case card of
+        NumberCard number color ->
+            number + 100*Color.toInt color
+        DrawCard color ->
+            10 + 100*Color.toInt color
+        SkipCard color ->
+            11 + 100*Color.toInt color
+        ReverseCard color ->
+            12 + 100*Color.toInt color
+        WildCard wildCard ->
+            case wildCard of
+                Standard ->
+                    100*13
+                DrawFour ->
+                    100*14
+
 getColor : Card -> Maybe Color
 getColor card =
     case card of
@@ -158,6 +176,10 @@ canPlayCard playedCard ( maybeActiveCard, maybeActiveColor ) =
 
         _ ->
             False
+
+sortCards : List Card -> List Card
+sortCards cards =
+    List.sortBy toInt cards
 
 
 encodeCard : Card -> E.Value

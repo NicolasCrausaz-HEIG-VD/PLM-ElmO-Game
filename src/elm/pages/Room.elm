@@ -145,7 +145,7 @@ displayPlayerDeck model player =
     div [ class "player-deck", classList [ ( "active", model.currentPlayer == player.uuid ) ] ]
         [ span [ class "player-name" ] [ text player.name ]
         , div [ class "cards" ]
-            (List.map (\card -> Game.CardView.cardView [ class "card", onClick (ClickCard card), disabled (not (Game.Card.canPlayCard card ( model.activeCard, model.activeColor ))) ] card) player.hand)
+            (List.map (\card -> Game.CardView.cardView [ class "card", onClick (ClickCard card), disabled (not (Game.Card.canPlayCard card ( model.activeCard, model.activeColor ))) ] card) (player.hand |> Game.Card.sortCards))
         ]
 
 

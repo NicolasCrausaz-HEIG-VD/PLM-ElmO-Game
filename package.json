@@ -18,12 +18,12 @@
     "peerjs": "^1.4.7"
   },
   "devDependencies": {
-    "elm-format": "0.8.7",
     "@types/elm": "^0.19.1",
     "elm": "0.19.1-5",
+    "elm-format": "0.8.7",
+    "sass": "^1.62.1",
     "typescript": "^5.0.4",
-    "vite": "^4.3.2",
-    "vite-plugin-elm": "2.8.0-beta.4",
-    "sass": "^1.62.1"
+    "vite": "^4.3.5",
+    "vite-plugin-elm": "2.8.0"
   }
 }
