@@ -24,6 +24,7 @@
     "sass": "^1.62.1",
     "typescript": "^5.0.4",
     "vite": "^4.3.5",
-    "vite-plugin-elm": "2.8.0"
+    "vite-plugin-elm": "2.8.0",
+    "vite-plugin-pwa": "^0.14.7"
   }
 }
