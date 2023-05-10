@@ -18,6 +18,7 @@ type Action
     | PlayerLeave UUID
     | PlayCard UUID PlayableCard
     | DrawCard UUID
+    | SayUno UUID
 
 
 needToUpdate : Bool -> Game -> ( Game, Bool )
@@ -43,6 +44,7 @@ onAction action game =
                     in
                     if played then
                         updatedGame
+                            |> Game.Core.checkIfPreviousPlayerSaidUno
                             |> Game.Core.nextTurn
                             |> Game.Core.applyCardEffect (Game.Card.getCard card)
                             |> needToUpdate True
@@ -57,8 +59,19 @@ onAction action game =
             case game |> Game.Core.getPlayerIfTurn uuid |> Tuple.first of
                 Just player ->
                     game
+                        |> Game.Core.checkIfPreviousPlayerSaidUno
                         |> Game.Core.drawCard 1 player
                         |> Game.Core.nextTurn
+                        |> needToUpdate True
+
+                Nothing ->
+                    game |> needToUpdate False
+
+        SayUno uuid ->
+            case game |> Game.Core.getPlayer uuid |> Tuple.first of
+                Just player ->
+                    game
+                        |> Game.Core.sayUndo player
                         |> needToUpdate True
 
                 Nothing ->
@@ -169,6 +182,12 @@ encodeAction action =
                 , ( "uuid", E.string uuid )
                 ]
 
+        SayUno uuid ->
+            E.object
+                [ ( "action", E.string "sayUno" )
+                , ( "uuid", E.string uuid )
+                ]
+
 
 decodeAction : D.Decoder Action
 decodeAction =
@@ -194,6 +213,10 @@ decodeAction =
                         D.map PlayerLeave
                             (D.field "uuid" D.string)
 
+                    "sayUno" ->
+                        D.map SayUno
+                            (D.field "uuid" D.string)
+
                     _ ->
                         D.fail ("Unknown action: " ++ action)
             )
@@ -205,6 +228,7 @@ encodePlayer player =
         [ ( "name", E.string player.name )
         , ( "uuid", E.string player.uuid )
         , ( "hand", E.list Game.Card.encodeCard player.hand )
+        , ( "saidUno", E.bool player.saidUno )
         ]
 
 

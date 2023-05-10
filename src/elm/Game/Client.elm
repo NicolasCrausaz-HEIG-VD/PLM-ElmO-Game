@@ -20,6 +20,7 @@ type alias LocalPlayer =
     { name : String
     , uuid : UUID
     , hand : Hand
+    , saidUno : Bool
     }
 
 
@@ -41,7 +42,7 @@ defaultGameModel =
             , ( "uuid3", { name = "Julien", uuid = "uuid3", cards = 5 } )
             , ( "uuid4", { name = "Alexandre", uuid = "uuid4", cards = 6 } )
             ]
-    , localPlayer = { name = "Maxime", uuid = "uuid1", hand = List.take 7 allCards }
+    , localPlayer = { name = "Maxime", uuid = "uuid1", hand = List.take 7 allCards, saidUno = False }
     , currentPlayer = "uuid1"
     , drawStack = 10
     , activeCard = List.head allCards
@@ -72,15 +73,17 @@ encodeLocalPlayer player =
         [ ( "name", E.string player.name )
         , ( "uuid", E.string player.uuid )
         , ( "hand", E.list Game.Card.encodeCard player.hand )
+        , ( "saidUno", E.bool player.saidUno )
         ]
 
 
 decodeLocalPlayer : D.Decoder LocalPlayer
 decodeLocalPlayer =
-    D.map3 LocalPlayer
+    D.map4 LocalPlayer
         (D.field "name" D.string)
         (D.field "uuid" D.string)
         (D.field "hand" (D.list Game.Card.decodeCard))
+        (D.field "saidUno" D.bool)
 
 
 encodeModel : Model -> E.Value

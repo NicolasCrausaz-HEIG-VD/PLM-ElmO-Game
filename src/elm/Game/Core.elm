@@ -20,6 +20,7 @@ type alias Player =
     { name : String
     , uuid : UUID
     , hand : Hand
+    , saidUno : Bool
     }
 
 
@@ -86,7 +87,7 @@ addPlayer ( uuid, name ) game =
             List.Extra.splitAt 7 game.drawStack
     in
     { game
-        | players = game.players ++ [ { name = name, hand = hand, uuid = uuid } ]
+        | players = game.players ++ [ { name = name, hand = hand, uuid = uuid, saidUno = False } ]
         , drawStack = drawStack
     }
 
@@ -201,6 +202,30 @@ nextPlayer players =
 
         player :: rest ->
             ifPlayerHasNoCardSkip (rest ++ [ player ])
+
+
+checkIfPreviousPlayerSaidUno : Model -> Model
+checkIfPreviousPlayerSaidUno game =
+    case game.players of
+        [] ->
+            game
+
+        _ :: remainingPlayers ->
+            case List.Extra.last remainingPlayers of
+                Just player ->
+                    if List.length player.hand == 1 && not player.saidUno then
+                        drawCard 2 player game
+
+                    else
+                        game
+
+                _ ->
+                    game
+
+
+sayUndo : Player -> Model -> Model
+sayUndo player game =
+    { game | players = updatePlayer { player | saidUno = True } game.players }
 
 
 ifPlayerHasNoCardSkip : List Player -> List Player

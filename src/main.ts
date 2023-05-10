@@ -110,6 +110,7 @@ interface HostGameState {
     name: string;
     uuid: string;
     hand: string[];
+    saidUno: boolean;
   }>;
   currentPlayer: string;
   drawStack: number;
@@ -127,6 +128,7 @@ interface ClientGameState {
     name: string;
     uuid: string;
     hand: string[];
+    saidUno: boolean;
   };
   currentPlayer: string;
   drawStack: number;

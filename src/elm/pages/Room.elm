@@ -81,6 +81,7 @@ type ClientMsg
     | SetState GameState
     | IncomingData E.Value
     | SendAction Game.Host.Action
+    | SayUno
 
 
 clientUpdate : ClientMsg -> Model -> ( Model, Cmd Msg )
@@ -91,6 +92,9 @@ clientUpdate msg model =
 
         ( PlayCard card, Just game ) ->
             clientUpdate (SendAction (Game.Host.PlayCard game.localPlayer.uuid card)) { model | state = Playing }
+
+        ( SayUno, Just game ) ->
+            clientUpdate (SendAction (Game.Host.SayUno game.localPlayer.uuid)) { model | state = Playing }
 
         ( ClickCard card, Just _ ) ->
             case card of
@@ -184,8 +188,8 @@ viewGame model =
                         div [] []
                 ]
             ]
-        , if List.length model.localPlayer.hand == 1 then
-            button [ id "uno-button" ] [ text "ELMO !!" ]
+        , if List.length model.localPlayer.hand == 1 && not model.localPlayer.saidUno then
+            button [ id "uno-button", onClick SayUno ] [ text "ELMO !!" ]
 
           else
             div [] []
