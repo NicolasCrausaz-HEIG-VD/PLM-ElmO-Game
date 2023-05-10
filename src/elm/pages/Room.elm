@@ -6,8 +6,8 @@ import Game.CardView
 import Game.Client
 import Game.Color
 import Game.Host
-import Html exposing (Html, button, div, img, span, text)
-import Html.Attributes exposing (class, classList, disabled, id, src, style)
+import Html exposing (Html, a, button, div, img, span, text)
+import Html.Attributes exposing (attribute, class, classList, disabled, id, src, style)
 import Html.Events exposing (onClick)
 import Json.Decode as D
 import Json.Encode as E
@@ -180,16 +180,17 @@ viewGame model =
         , div [ class "center" ]
             [ displayDrawStack model.drawStack
             , div [ class "active-card" ]
-                [ case model.activeCard of
-                    Just card ->
-                        Game.CardView.cardView [ class "card" ] card
+                [ case ( model.activeCard, model.activeColor ) of
+                    ( Just card, Just color ) ->
+                        -- Game.CardView.cardView [ class "card" ] card // add a data-color attrbute to display the color like yellow / red / blue / green
+                        Game.CardView.cardView [ class "card", attribute "data-color" (color |> Game.Color.toString) ] card
 
-                    Nothing ->
+                    _ ->
                         div [] []
                 ]
             ]
         , if Game.Client.showUnoButton model then
-            button [ id "uno-button", onClick SayUno ] [ text "ELMO !!" ]
+            button [ id "uno-button", onClick SayUno ] []
 
           else
             div [] []

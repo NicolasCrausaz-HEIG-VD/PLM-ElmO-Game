@@ -1,83 +1,77 @@
 %card-transition {
-    transition: all 0.1s ease;
-    margin: 0 -20px;
+  transition: all 0.1s ease;
+  margin: 0 -20px;
 }
 
-%pulse-animation {
-    animation: pulse 1s infinite;
-    font-weight: bolder;
-    &::before, &::after {
-        margin: 0 5px;
-    }
-    &::before {
-        content: "👉";
-    }
-    &::after {
-        content: "👈";
-    }
+%scale-animation {
+  animation: scale 1s infinite;
+  font-weight: bolder;
+  &::before,
+  &::after {
+    margin: 0 5px;
+  }
+  &::before {
+    content: "👉";
+  }
+  &::after {
+    content: "👈";
+  }
 }
 
 %flex-space-evenly {
-    display: flex;
-    justify-content: space-evenly;
-    & > * {
-        margin: 10px;
-    }
+  display: flex;
+  justify-content: space-evenly;
+  & > * {
+    margin: 10px;
+  }
 }
 
+$red: #e80000;
+$blue: #5555ff;
+$green: #55aa55;
+$yellow: #ffee02;
+
 .cards {
-    @extend %flex-space-evenly;
-    flex-wrap: wrap;
-    justify-content: center;
+  @extend %flex-space-evenly;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .card {
-    @extend %card-transition;
-    all: unset;
-    outline: 0 !important;
-    border: 0 !important;
-    perspective: 1000px;
-    user-select: none;
-    height: fit-content;
-    width: fit-content;
-    cursor: pointer;
+  @extend %card-transition;
+  all: unset;
+  outline: 0 !important;
+  user-select: none;
+  height: fit-content;
+  width: fit-content;
+  border-radius: calc(var(--height, 150px) / 8);
 
-    &:disabled {
-        cursor: not-allowed;
-        transform: scale(0.9);
-    }
+  img {
+    display: block;
+    height: var(--height, 150px);
+    transition: all 0.5s ease;
+  }
 
-    .card_inner {
-        transform-style: preserve-3d;
-        transition: transform 0.5s ease;
-        height: 100%;
-        width: 100%;
-        position: relative;
-        border-radius: 40px;
-        box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.2);
-        transform: rotateY(180deg);
-    }
+  @mixin colored-drop-shadow($color, $border) {
+    background-color: $color;
+    padding: $border;
+  }
 
-    .card_front,
-    .card_back {
-        backface-visibility: hidden;
-        pointer-events: none;
-    }
+  &[data-color="red"] {
+    @include colored-drop-shadow($red, 5px);
+  }
 
-    .card_back {
-        position: absolute;
-        top: 0;
-        left: 0;
-        height: 100%;
-        width: 100%;
-        transform: rotateY(180deg);
-    }
+  &[data-color="blue"] {
+    @include colored-drop-shadow($blue, 5px);
+  }
 
-    &.active, &:hover {
-        .card_inner {
-            transform: rotateY(0deg);
-        }
-    }
+  &[data-color="green"] {
+    @include colored-drop-shadow($green, 5px);
+  }
+
+  &[data-color="yellow"] {
+    @include colored-drop-shadow($yellow, 5px);
+  }
 }
 
 .lobby-menu {
@@ -99,13 +93,13 @@
     }
 
     .tabs {
-        @extend %flex-space-evenly;
+      @extend %flex-space-evenly;
     }
 
     .container {
-        @extend %flex-space-evenly;
-        align-items: center;
-        flex-direction: column;
+      @extend %flex-space-evenly;
+      align-items: center;
+      flex-direction: column;
     }
 
     input {
@@ -164,7 +158,7 @@
     z-index: 10;
     transition: transform 0.5s ease;
     transform: translateY(50%);
-  
+
     .player-name {
       text-align: center;
       font-size: 20px;
@@ -174,55 +168,62 @@
 
     &.active {
       .player-name {
-        @extend %pulse-animation;
+        @extend %scale-animation;
+      }
+
+      .card {
+        &:not(:disabled) {
+          animation: pulse 1s infinite;
+        }
       }
     }
-  
+
     .cards {
-        padding: 0px 20px;
-        
-  
-    .card {
+      padding: 0px 20px;
+
+      .card {
         transition: transform 0.1s ease, margin 0.5s ease;
         margin: 0 -20px -110px -20px;
         transform-origin: bottom center;
-    
+        --height: 150px;
+
+        cursor: pointer;
+
+        &:disabled {
+          cursor: not-allowed;
+        }
+
         &:last-child {
           margin: 0 -20px 0 -20px !important;
         }
-    
+
         &:hover {
           transform: scale(1.5) translateY(-5%);
           z-index: 100;
-    
+
           & + .card {
             transform: scale(1.25) translateY(-2.5%);
             z-index: 99;
-    
+
             & + .card {
               transform: scale(1.125) translateY(-1%);
               z-index: 98;
             }
           }
         }
-    
+
         &:has(+ .card:hover) {
           transform: scale(1.25) translateY(-2.5%);
           z-index: 99;
         }
-    
+
         &:has(+ .card + .card:hover) {
           transform: scale(1.125) translateY(-1%);
           z-index: 98;
         }
       }
-    
-      img {
-        transition: all 0.5s ease;
-        height: 150px;
-      }
     }
-    
+
     transition-delay: 1s;
     &:hover {
       transition-delay: 0s;
@@ -239,10 +240,7 @@
     flex-direction: column;
     width: 100%;
     padding: 10px;
-
-    img {
-      height: 80px;
-    }
+    --height: 80px;
 
     & > * {
       margin: 5px;
@@ -267,7 +265,7 @@
       border-radius: 10px;
 
       .player-name {
-        @extend %pulse-animation;
+        @extend %scale-animation;
       }
     }
   }
@@ -302,9 +300,8 @@
         left: 0;
         z-index: 3;
         opacity: 1;
-        img {
-          height: 150px;
-        }
+        --height: 150px;
+        cursor: pointer;
       }
 
       .card:first-child {
@@ -325,31 +322,63 @@
         left: -6px;
         z-index: 1;
       }
-      .card:nth-child(n+4) {
+      .card:nth-child(n + 4) {
         opacity: 0;
         z-index: 0;
       }
     }
-
   }
 
   .active-card {
-    .card img {
-        height: 250px;
+    .card {
+      --height: 250px;
     }
   }
 }
 
+@keyframes scale {
+  0% {
+    transform: scale(0.95);
+  }
+
+  70% {
+    transform: scale(1);
+  }
+
+  100% {
+    transform: scale(0.95);
+  }
+}
+
 @keyframes pulse {
-    0% {
-        transform: scale(0.95);
-    }
-    70% {
-        transform: scale(1);
-    }
-    100% {
-        transform: scale(0.95);
-    }
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+  }
+
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+
+@keyframes pulse-scale {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+  }
+
+  70% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 20px rgba(255, 255, 255, 0);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
 }
 
 .modal {
@@ -376,12 +405,28 @@
     border: 2px solid black;
     box-shadow: 0px 0px 20px #e80000;
     border-radius: 20px;
+    width: 100%;
+    max-width: 320px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .cards-choice {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     grid-gap: 20px;
+    align-self: center;
+  }
+
+  .card {
+    transition: transform 0.1s ease;
+    &:hover {
+      transform: scale(1.05);
+    }
+    &:active {
+      transform: scale(0.95);
+    }
   }
 
   .modal-footer {
@@ -397,8 +442,26 @@
 }
 
 #uno-button {
-  background-color: red;
+  background-color: $red;
   position: absolute;
-  animation: pulse 1s infinite;
-  font-size: 50px;
+  transition: all 0.1s ease;
+  animation: pulse-scale 1s infinite;
+  border: white solid 5px;
+  border-radius: 15px;
+  z-index: 100;
+  width: 100%;
+  height: 100%;
+  max-width: 320px;
+  max-height: 200px;
+  padding: 20px;
+  &::after {
+    content: "";
+    display: block;
+    width: 100%;
+    height: 100%;
+    background-image: url(/logo_text.svg);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+  }
 }
