@@ -232,8 +232,6 @@
       }
     }
   }
-  
-
 
   .player {
     margin: 0 15px;
@@ -396,4 +394,11 @@
       width: 100%;
     }
   }
+}
+
+#uno-button {
+  background-color: red;
+  position: absolute;
+  animation: pulse 1s infinite;
+  font-size: 50px;
 }

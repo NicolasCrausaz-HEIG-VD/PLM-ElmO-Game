@@ -173,6 +173,11 @@ viewGame model =
                         div [] []
                 ]
             ]
+        , if List.length model.localPlayer.hand == 1 then
+            button [ id "uno-button" ] [ text "ELMO !!" ]
+
+          else
+            div [] []
         ]
 
 
