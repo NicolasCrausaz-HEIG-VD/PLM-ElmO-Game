@@ -3,7 +3,7 @@ module Game.Client exposing (..)
 import Dict exposing (Dict)
 import Game.Card exposing (Card, PlayableCard(..))
 import Game.Color exposing (Color)
-import Game.Core exposing (Hand, allCards)
+import Game.Core exposing (Hand)
 import Json.Decode as D
 import Json.Encode as E
 import Utils exposing (UUID)
@@ -34,20 +34,9 @@ type alias Model =
     }
 
 
-defaultGameModel : Model
-defaultGameModel =
-    { distantPlayers =
-        Dict.fromList
-            [ ( "uuid2", { name = "Nicolas", uuid = "uuid2", cards = 4 } )
-            , ( "uuid3", { name = "Julien", uuid = "uuid3", cards = 5 } )
-            , ( "uuid4", { name = "Alexandre", uuid = "uuid4", cards = 6 } )
-            ]
-    , localPlayer = { name = "Maxime", uuid = "uuid1", hand = List.take 7 allCards, saidUno = False }
-    , currentPlayer = "uuid1"
-    , drawStack = 10
-    , activeCard = List.head allCards
-    , activeColor = Just Game.Color.Red
-    }
+showUnoButton : Model -> Bool
+showUnoButton model =
+    List.length model.localPlayer.hand == 1 && not model.localPlayer.saidUno && model.currentPlayer /= model.localPlayer.uuid
 
 
 encodeDistantPlayer : DistantPlayer -> E.Value

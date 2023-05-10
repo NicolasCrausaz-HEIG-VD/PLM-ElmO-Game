@@ -223,6 +223,11 @@ checkIfPreviousPlayerSaidUno game =
                     game
 
 
+resetSaidUno : Model -> Model
+resetSaidUno game =
+    { game | players = List.map (\player -> { player | saidUno = False }) game.players }
+
+
 sayUndo : Player -> Model -> Model
 sayUndo player game =
     { game | players = updatePlayer { player | saidUno = True } game.players }

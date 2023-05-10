@@ -6,7 +6,7 @@ import Game.CardView
 import Game.Client
 import Game.Color
 import Game.Host
-import Html exposing (Html, button, div, img, li, span, text)
+import Html exposing (Html, button, div, img, span, text)
 import Html.Attributes exposing (class, classList, disabled, id, src, style)
 import Html.Events exposing (onClick)
 import Json.Decode as D
@@ -188,7 +188,7 @@ viewGame model =
                         div [] []
                 ]
             ]
-        , if List.length model.localPlayer.hand == 1 && not model.localPlayer.saidUno then
+        , if Game.Client.showUnoButton model then
             button [ id "uno-button", onClick SayUno ] [ text "ELMO !!" ]
 
           else

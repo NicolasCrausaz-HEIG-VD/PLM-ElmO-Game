@@ -45,6 +45,7 @@ onAction action game =
                     if played then
                         updatedGame
                             |> Game.Core.checkIfPreviousPlayerSaidUno
+                            |> Game.Core.resetSaidUno
                             |> Game.Core.nextTurn
                             |> Game.Core.applyCardEffect (Game.Card.getCard card)
                             |> needToUpdate True
@@ -60,6 +61,7 @@ onAction action game =
                 Just player ->
                     game
                         |> Game.Core.checkIfPreviousPlayerSaidUno
+                        |> Game.Core.resetSaidUno
                         |> Game.Core.drawCard 1 player
                         |> Game.Core.nextTurn
                         |> needToUpdate True

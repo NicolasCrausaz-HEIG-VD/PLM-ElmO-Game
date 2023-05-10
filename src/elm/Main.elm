@@ -110,7 +110,7 @@ changeRouteTo route model =
                 |> updateWith Room RoomMsg model
 
         Nothing ->
-            ( model, Cmd.none )
+            ( model, Route.replaceUrl session.key Route.Lobby )
 
 
 
