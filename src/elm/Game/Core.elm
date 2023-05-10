@@ -163,7 +163,7 @@ updatePlayer : Player -> List Player -> List Player
 updatePlayer updatedPlayer players =
     List.map
         (\player ->
-            if player.name == updatedPlayer.name then
+            if player.uuid == updatedPlayer.uuid then
                 updatedPlayer
 
             else

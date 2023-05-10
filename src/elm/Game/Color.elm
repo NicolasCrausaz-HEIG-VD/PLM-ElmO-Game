@@ -27,6 +27,21 @@ toString color =
         Yellow ->
             "yellow"
 
+toInt : Color -> Int
+toInt color =
+    case color of
+        Red ->
+            0
+
+        Blue ->
+            1
+
+        Green ->
+            2
+
+        Yellow ->
+            3
+
 
 fromString : String -> Maybe Color
 fromString string =
