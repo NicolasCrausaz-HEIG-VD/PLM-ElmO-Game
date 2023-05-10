@@ -12,8 +12,11 @@ import Html.Events exposing (onClick)
 import Json.Decode as D
 import Json.Encode as E
 import Network
+import Random
+import Route
 import Session exposing (Session)
 import Utils exposing (Code, UUID)
+import Utils.Pseudo
 
 
 
@@ -67,7 +70,8 @@ port outgoingAction : E.Value -> Cmd msg
 type Msg
     = HostMsg Game.Host.HostMsg
     | ClientMsg ClientMsg
-    | StartClientGame ( Code, UUID )
+    | ConnectClientGame ( Code, UUID, Bool )
+    | StartClientGame ( Code, UUID, String )
 
 
 type ClientMsg
@@ -123,8 +127,15 @@ update msg model =
         ClientMsg clientMsg ->
             clientUpdate clientMsg model
 
-        StartClientGame ( code, playerUUID ) ->
-            init code (model.session |> Session.update (Session.Client { code = code, playerUUID = playerUUID, username = "Elmo" }))
+        ConnectClientGame ( code, playerUUID, success ) ->
+            if success then
+                ( model, Random.generate (\username -> StartClientGame ( code, playerUUID, username )) Utils.Pseudo.randomCharacterGenerator )
+
+            else
+                ( model, Route.replaceUrl model.session.key Route.Lobby )
+
+        StartClientGame ( code, playerUUID, username ) ->
+            init code (model.session |> Session.update (Session.Client { code = code, playerUUID = playerUUID, username = username }))
 
 
 
@@ -257,7 +268,7 @@ subscriptions _ =
     Sub.batch
         [ incomingData (ClientMsg << IncomingData)
         , Game.Host.incomingAction (HostMsg << Game.Host.IncomingAction)
-        , Network.joinedRoom StartClientGame
+        , Network.joinedRoom ConnectClientGame
         ]
 
 

@@ -27,6 +27,7 @@ toString color =
         Yellow ->
             "yellow"
 
+
 toInt : Color -> Int
 toInt color =
     case color of

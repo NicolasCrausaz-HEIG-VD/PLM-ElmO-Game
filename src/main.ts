@@ -8,7 +8,7 @@ type Ports = {
     subscribe: (callback: (code:string) => void) => void;
   },
   joinedRoom: {
-    send: ([code, playerUUID]:[string, string]) => void;
+    send: ([code, playerUUID, success]:[string, string, boolean]) => void;
   }
   createRoom: {
     subscribe: (callback: () => void) => void;
@@ -40,17 +40,21 @@ let network: Network | undefined;
 // Client
 appState.ports?.joinRoom?.subscribe(async (code) => {
   network = new Network();
-  await network.connect(code);
+  try {
+    await network.connect(code);
 
-  network.channel('data').on(data => {
-    appState.ports?.incomingData?.send(data);
-  });
-
-  appState.ports?.outgoingAction?.subscribe((action) => {
-    network?.channel('action').send(code, action);
-  });
-
-  appState.ports?.joinedRoom?.send([code, network.getPeerId()]);
+    network.channel('data').on(data => {
+      appState.ports?.incomingData?.send(data);
+    });
+  
+    appState.ports?.outgoingAction?.subscribe((action) => {
+      network?.channel('action').send(code, action);
+    });
+  
+    appState.ports?.joinedRoom?.send([code, network.getPeerId(), true]);
+  } catch (err) {
+    appState.ports?.joinedRoom?.send([code, network.getPeerId(), false]);
+  }
 });
 
 

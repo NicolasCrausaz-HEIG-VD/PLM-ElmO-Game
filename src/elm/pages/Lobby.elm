@@ -5,9 +5,11 @@ import Html exposing (Html, button, code, div, img, input, text)
 import Html.Attributes exposing (class, classList, placeholder, src, value)
 import Html.Events exposing (onClick, onInput)
 import Network
+import Random
 import Route
 import Session exposing (Session)
 import Utils exposing (Code, UUID)
+import Utils.Pseudo
 
 
 
@@ -34,7 +36,7 @@ init session =
       , username = ""
       , code = Nothing
       }
-    , Cmd.none
+    , Random.generate SetUsername Utils.Pseudo.randomCharacterGenerator
     )
 
 
@@ -80,7 +82,7 @@ view model =
 type Msg
     = ToggleMode Mode
     | StartHostGame Code Game.Core.Model
-    | StartClientGame ( Code, UUID )
+    | StartClientGame ( Code, UUID, Bool )
     | StartGame
     | SetCode Code
     | SetUsername String
@@ -115,8 +117,12 @@ update msg model =
         SetUsername username ->
             ( { model | username = username }, Cmd.none )
 
-        StartClientGame ( code, playerUUID ) ->
-            ( { model | session = model.session |> Session.update (Session.Client { code = code, playerUUID = playerUUID, username = model.username }) }, Route.replaceUrl model.session.key (Route.Room code) )
+        StartClientGame ( code, playerUUID, success ) ->
+            if success then
+                ( { model | session = model.session |> Session.update (Session.Client { code = code, playerUUID = playerUUID, username = model.username }) }, Route.replaceUrl model.session.key (Route.Room code) )
+
+            else
+                ( model, Cmd.none )
 
         StartHostGame code gameModel ->
             ( { model | session = model.session |> Session.update (Session.Host gameModel { code = code, playerUUID = code, username = model.username }) }, Route.replaceUrl model.session.key (Route.Room code) )

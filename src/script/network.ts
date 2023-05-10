@@ -79,8 +79,7 @@ export class Network<TEvent = Record<string, any>> extends Emittery<{
         this.addConnection(conn);
         resolve(conn);
       });
-      conn.once('error', (err) => {
-        console.error('error', err);
+      this.peer.once('error', (err) => {
         reject(err);
       });
     });

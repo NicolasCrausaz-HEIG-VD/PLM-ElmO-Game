@@ -10,7 +10,7 @@ import Utils exposing (Code, UUID)
 port joinRoom : Code -> Cmd msg
 
 
-port joinedRoom : (( Code, UUID ) -> msg) -> Sub msg
+port joinedRoom : (( Code, UUID, Bool ) -> msg) -> Sub msg
 
 
 port createRoom : () -> Cmd msg
