@@ -62,7 +62,7 @@ appState.ports?.joinRoom?.subscribe(async (code) => {
 appState.ports?.createRoom?.subscribe(async () => {
   network = new Network({
     middleware() {
-      return this.getPeers().length < 4;
+      return this.getPeers().length < 10;
     }
   });
   const code = await network.onReady();
@@ -138,16 +138,23 @@ interface ClientGameState {
 }
 
 function hostToClient(host: HostGameState, localPlayerUUID: string): ClientGameState {
+  const players = rotateArray(host.players, localPlayerUUID);
   return {
-    distantPlayers: host.players.filter(player => player.uuid !== localPlayerUUID).map(player => ({
+    distantPlayers: players.slice(1).map(player => ({
       name: player.name,
       uuid: player.uuid,
       cards: player.hand.length,
     })),
-    localPlayer: host.players.find(player => player.uuid === localPlayerUUID)!,
+    localPlayer: players[0],
     currentPlayer: host.currentPlayer,
     drawStack: host.drawStack,
     activeCard: host.activeCard,
     activeColor: host.activeColor,
   }
+}
+
+// function to rotate an array to always have the local player at the start
+function rotateArray<T extends { uuid: string }>(arr: T[], localPlayerUUID: string): T[] {
+  const index = arr.findIndex(item => item.uuid === localPlayerUUID);
+  return [...arr.slice(index), ...arr.slice(0, index)];
 }

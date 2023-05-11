@@ -2,7 +2,7 @@ module Pages.Lobby exposing (Model, Msg, init, subscriptions, toSession, update,
 
 import Game.Core
 import Html exposing (Html, button, code, div, img, input, text)
-import Html.Attributes exposing (class, classList, placeholder, src, value)
+import Html.Attributes as Attributes exposing (class, classList, placeholder, src, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Network
 import Random
@@ -25,6 +25,7 @@ type alias Model =
     , mode : Mode
     , username : String
     , code : Maybe Code
+    , nbAI : Int
     }
 
 
@@ -34,6 +35,7 @@ init session =
       , mode = Client
       , username = ""
       , code = Nothing
+      , nbAI = 0
       }
     , Random.generate SetUsername Utils.randomCharacterGenerator
     )
@@ -59,6 +61,8 @@ view model =
                     (case model.mode of
                         Host ->
                             [ text "Ready to host a game!"
+                            , input [ type_ "range", Attributes.min "0", Attributes.max "10", onInput SetNbAI, value (model.nbAI |> String.fromInt) ] []
+                            , text (model.nbAI |> String.fromInt |> (\nbAI -> "Number of AI: " ++ nbAI))
                             , input [ placeholder "Username", onInput SetUsername, value model.username ] []
                             , button [ onClick StartGame ] [ text "Start Game" ]
                             ]
@@ -85,6 +89,7 @@ type Msg
     | StartGame
     | SetCode Code
     | SetUsername String
+    | SetNbAI String
     | RequestNewGame Code
 
 
@@ -113,6 +118,9 @@ update msg model =
         SetCode code ->
             ( { model | code = Just code }, Cmd.none )
 
+        SetNbAI nbAI ->
+            ( { model | nbAI = String.toInt nbAI |> Maybe.withDefault 0 }, Cmd.none )
+
         SetUsername username ->
             ( { model | username = username }, Cmd.none )
 
@@ -124,7 +132,7 @@ update msg model =
                 ( model, Cmd.none )
 
         StartHostGame code gameModel ->
-            ( { model | session = model.session |> Session.update (Session.Host gameModel { code = code, playerUUID = code, username = model.username }) }, Route.replaceUrl model.session.key (Route.Room code) )
+            ( { model | session = model.session |> Session.update (Session.Host { game = gameModel, nbAI = model.nbAI } { code = code, playerUUID = code, username = model.username }) }, Route.replaceUrl model.session.key (Route.Room code) )
 
         RequestNewGame code ->
             ( model, Game.Core.newGame (StartHostGame code) )

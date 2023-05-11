@@ -5,12 +5,13 @@ import Game.Action exposing (Action)
 import Game.Card
 import Game.Color
 import Game.Core
-import Html exposing (code)
 import Json.Decode as D
 import Json.Encode as E
 import Random
 import Session exposing (Session)
-import Utils exposing (UUID)
+import Task
+import UUID
+import Utils
 
 
 type alias Game =
@@ -31,14 +32,28 @@ type HostMsg
 
 addAIPlayersCmd : Int -> Cmd HostMsg
 addAIPlayersCmd n =
-    Cmd.batch (List.repeat n (Random.generate (\username -> OnAction (Game.Action.PlayerJoin username username True)) Utils.randomCharacterGenerator))
+    let
+        toPlayerJoin ( uuid, username ) =
+            Game.Action.PlayerJoin (UUID.toString uuid) username True
+
+        generatePlayer =
+            Random.pair UUID.generator Utils.randomCharacterGenerator
+                |> Random.map toPlayerJoin
+    in
+    Random.generate OnAction (Random.list n generatePlayer |> Random.map Game.Action.Batch)
+
+
+actionCmd : Action -> Cmd HostMsg
+actionCmd action =
+    Task.succeed (OnAction action)
+        |> Task.perform identity
 
 
 setHostGame : Game.Core.Model -> { a | session : Session } -> { a | session : Session }
 setHostGame game model =
     case model.session.session of
-        Session.Host _ roomData ->
-            { model | session = model.session |> Session.update (Session.Host game roomData) }
+        Session.Host config roomData ->
+            { model | session = model.session |> Session.update (Session.Host { config | game = game } roomData) }
 
         _ ->
             model
@@ -47,14 +62,14 @@ setHostGame game model =
 getHostGame : { a | session : Session } -> Maybe Game.Core.Model
 getHostGame model =
     case model.session.session of
-        Session.Host game _ ->
-            Just game
+        Session.Host config _ ->
+            Just config.game
 
         _ ->
             Nothing
 
 
-getCurrentPlayer : { a | session : Session } -> UUID
+getCurrentPlayer : { a | session : Session } -> Utils.UUID
 getCurrentPlayer model =
     case model.session.session of
         Session.Host _ roomData ->

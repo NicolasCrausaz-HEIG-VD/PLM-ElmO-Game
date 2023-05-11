@@ -290,8 +290,14 @@ $yellow: #ffee02;
   .draw-stack {
     position: absolute;
     right: 10px;
+    &.hint {
+      .card {
+        animation: pulse 1s infinite;
+      }
+    }
     .cards {
       position: relative;
+      cursor: pointer;
 
       .card {
         display: block;
@@ -301,7 +307,6 @@ $yellow: #ffee02;
         z-index: 3;
         opacity: 1;
         --height: 150px;
-        cursor: pointer;
       }
 
       .card:first-child {

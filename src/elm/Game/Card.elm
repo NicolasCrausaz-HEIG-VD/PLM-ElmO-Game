@@ -155,8 +155,8 @@ getPlayableCardColor playableCard =
             Just color
 
 
-canPlayCard : Card -> ( Maybe Card, Maybe Color ) -> Bool
-canPlayCard playedCard ( maybeActiveCard, maybeActiveColor ) =
+canPlayCard : ( Maybe Card, Maybe Color ) -> Card -> Bool
+canPlayCard ( maybeActiveCard, maybeActiveColor ) playedCard =
     case ( maybeActiveCard, maybeActiveColor ) of
         ( Just activeCard, Just activeColor ) ->
             case playedCard of
@@ -182,6 +182,11 @@ canPlayCard playedCard ( maybeActiveCard, maybeActiveColor ) =
 
         _ ->
             False
+
+
+getPlayableCards : ( Maybe Card, Maybe Color ) -> List Card -> List Card
+getPlayableCards ( maybeActiveCard, maybeActiveColor ) cards =
+    List.filter (canPlayCard ( maybeActiveCard, maybeActiveColor )) cards
 
 
 sortCards : List Card -> List Card

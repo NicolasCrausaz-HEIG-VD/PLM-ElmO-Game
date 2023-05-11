@@ -5,9 +5,15 @@ import Game.Core
 import Utils exposing (RoomData)
 
 
+type alias HostConfig =
+    { game : Game.Core.Model
+    , nbAI : Int
+    }
+
+
 type SessionType
     = NotConnected
-    | Host Game.Core.Model RoomData
+    | Host HostConfig RoomData
     | Client RoomData
 
 

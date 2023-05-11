@@ -120,7 +120,12 @@ getFirstCard game =
 
 canPlayCard : Card -> Model -> Bool
 canPlayCard card game =
-    Game.Card.canPlayCard card ( game.activeCard, game.activeColor )
+    Game.Card.canPlayCard ( game.activeCard, game.activeColor ) card
+
+
+getPlayableCards : Model -> List Card -> List Card
+getPlayableCards game cards =
+    List.filter (\card -> canPlayCard card game) cards
 
 
 playCard : PlayableCard -> Model -> ( Model, Bool )
@@ -226,7 +231,12 @@ checkIfPreviousPlayerSaidUno game =
 
 resetSaidUno : Model -> Model
 resetSaidUno game =
-    { game | players = List.map (\player -> { player | saidUno = False }) game.players }
+    case game |> getCurrentPlayer |> Tuple.first of
+        Just player ->
+            { game | players = updatePlayer { player | saidUno = False } game.players }
+
+        _ ->
+            game
 
 
 sayUndo : Player -> Model -> Model

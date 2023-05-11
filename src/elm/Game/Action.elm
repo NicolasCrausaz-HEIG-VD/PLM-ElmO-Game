@@ -17,6 +17,7 @@ type Action
     | PlayCard UUID PlayableCard
     | DrawCard UUID
     | SayUno UUID
+    | Batch (List Action)
 
 
 needToUpdate : Bool -> Game -> ( Game, Bool )
@@ -43,8 +44,8 @@ executeAction action game =
                     if played then
                         updatedGame
                             |> Game.Core.checkIfPreviousPlayerSaidUno
-                            |> Game.Core.resetSaidUno
                             |> Game.Core.nextTurn
+                            |> Game.Core.resetSaidUno
                             |> Game.Core.applyCardEffect (Game.Card.getCard card)
                             |> needToUpdate True
 
@@ -59,9 +60,9 @@ executeAction action game =
                 Just player ->
                     game
                         |> Game.Core.checkIfPreviousPlayerSaidUno
-                        |> Game.Core.resetSaidUno
                         |> Game.Core.drawCard 1 player
                         |> Game.Core.nextTurn
+                        |> Game.Core.resetSaidUno
                         |> needToUpdate True
 
                 Nothing ->
@@ -76,6 +77,18 @@ executeAction action game =
 
                 Nothing ->
                     game |> needToUpdate False
+
+        Batch actions ->
+            List.foldl
+                (\innerAction ( innerGame, updated ) ->
+                    let
+                        ( newGame, newUpdated ) =
+                            executeAction innerAction innerGame
+                    in
+                    ( newGame, updated || newUpdated )
+                )
+                ( game, False )
+                actions
 
 
 encodeAction : Action -> E.Value
@@ -113,6 +126,9 @@ encodeAction action =
                 , ( "uuid", E.string uuid )
                 ]
 
+        Batch actions ->
+            E.list encodeAction actions
+
 
 decodeAction : D.Decoder Action
 decodeAction =
@@ -142,6 +158,10 @@ decodeAction =
                     "sayUno" ->
                         D.map SayUno
                             (D.field "uuid" D.string)
+
+                    "batch" ->
+                        D.map Batch
+                            (D.field "actions" (D.list decodeAction))
 
                     _ ->
                         D.fail ("Unknown action: " ++ action)

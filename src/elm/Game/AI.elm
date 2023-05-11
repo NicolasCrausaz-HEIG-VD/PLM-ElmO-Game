@@ -99,8 +99,7 @@ getBestCard : Player -> Game -> Maybe PlayableCard
 getBestCard player game =
     let
         playableCards =
-            player.hand
-                |> List.filter (\card -> Game.Core.canPlayCard card game)
+            player.hand |> Game.Core.getPlayableCards game
 
         filterCards =
             filterColorCards playableCards

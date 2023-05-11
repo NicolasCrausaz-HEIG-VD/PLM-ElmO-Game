@@ -46,11 +46,11 @@ init code session =
         Session.NotConnected ->
             ( initModel session, Network.joinRoom code )
 
-        Session.Host _ data ->
+        Session.Host config data ->
             ( initModel session
             , Cmd.batch
-                [ outgoingAction (Game.Action.encodeAction (Game.Action.PlayerJoin data.playerUUID data.username False))
-                , Cmd.map HostMsg (Game.Host.addAIPlayersCmd 2)
+                [ Cmd.map HostMsg (Game.Host.actionCmd (Game.Action.PlayerJoin data.playerUUID data.username False))
+                , Cmd.map HostMsg (Game.Host.addAIPlayersCmd config.nbAI)
                 ]
             )
 
@@ -169,13 +169,13 @@ displayPlayerDeck model player =
     div [ class "player-deck", classList [ ( "active", model.currentPlayer == player.uuid ) ] ]
         [ span [ class "player-name" ] [ text player.name ]
         , div [ class "cards" ]
-            (List.map (\card -> Game.CardView.cardView [ class "card", onClick (ClickCard card), disabled (not (Game.Card.canPlayCard card ( model.activeCard, model.activeColor ))) ] card) (player.hand |> Game.Card.sortCards))
+            (List.map (\card -> Game.CardView.cardView [ class "card", onClick (ClickCard card), disabled (not (Game.Card.canPlayCard ( model.activeCard, model.activeColor ) card)) ] card) (player.hand |> Game.Card.sortCards))
         ]
 
 
-displayDrawStack : Int -> Html ClientMsg
-displayDrawStack stack =
-    div [ class "draw-stack" ]
+displayDrawStack : Int -> Bool -> Html ClientMsg
+displayDrawStack stack hint =
+    div [ class "draw-stack", classList [ ( "hint", hint ) ] ]
         [ div [ class "cards" ]
             (List.repeat (min 3 stack) (Game.CardView.emptyView [ class "card", onClick DrawCard ]))
         ]
@@ -184,10 +184,10 @@ displayDrawStack stack =
 viewGame : Game.Client.Model -> Html ClientMsg
 viewGame model =
     div [ class "game" ]
-        [ div [ class "topbar" ] (List.map (displayDistantPlayer model) (Dict.values model.distantPlayers))
+        [ div [ class "topbar" ] (List.map (displayDistantPlayer model) model.distantPlayers)
         , displayPlayerDeck model model.localPlayer
         , div [ class "center" ]
-            [ displayDrawStack model.drawStack
+            [ displayDrawStack model.drawStack (model.localPlayer.hand |> Game.Card.getPlayableCards ( model.activeCard, model.activeColor ) |> List.isEmpty)
             , div [ class "active-card" ]
                 [ case ( model.activeCard, model.activeColor ) of
                     ( Just card, Just color ) ->

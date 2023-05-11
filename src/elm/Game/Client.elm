@@ -1,6 +1,5 @@
 module Game.Client exposing (..)
 
-import Dict exposing (Dict)
 import Game.Card exposing (Card, PlayableCard(..))
 import Game.Color exposing (Color)
 import Game.Core exposing (Hand)
@@ -25,7 +24,7 @@ type alias LocalPlayer =
 
 
 type alias Model =
-    { distantPlayers : Dict UUID DistantPlayer
+    { distantPlayers : List DistantPlayer
     , localPlayer : LocalPlayer
     , currentPlayer : UUID
     , drawStack : Int
@@ -78,7 +77,7 @@ decodeLocalPlayer =
 encodeModel : Model -> E.Value
 encodeModel model =
     E.object
-        [ ( "distantPlayers", E.list encodeDistantPlayer (Dict.values model.distantPlayers) )
+        [ ( "distantPlayers", E.list encodeDistantPlayer model.distantPlayers )
         , ( "localPlayer", encodeLocalPlayer model.localPlayer )
         , ( "currentPlayer", E.string model.currentPlayer )
         , ( "drawStack", E.int model.drawStack )
@@ -90,13 +89,7 @@ encodeModel model =
 decodeModel : D.Decoder Model
 decodeModel =
     D.map6 Model
-        (D.field "distantPlayers" (D.list decodeDistantPlayer)
-            |> D.andThen
-                (\players ->
-                    Dict.fromList (List.map (\p -> ( p.uuid, p )) players)
-                        |> D.succeed
-                )
-        )
+        (D.field "distantPlayers" (D.list decodeDistantPlayer))
         (D.field "localPlayer" decodeLocalPlayer)
         (D.field "currentPlayer" D.string)
         (D.field "drawStack" D.int)
