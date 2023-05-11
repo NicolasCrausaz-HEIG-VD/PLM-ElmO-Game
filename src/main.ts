@@ -111,6 +111,7 @@ interface HostGameState {
     uuid: string;
     hand: string[];
     saidUno: boolean;
+    isAI: boolean;
   }>;
   currentPlayer: string;
   drawStack: number;

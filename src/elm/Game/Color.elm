@@ -63,6 +63,26 @@ fromString string =
             Nothing
 
 
+countColors : List Color -> List ( Color, Int )
+countColors colors =
+    List.map
+        (\color ->
+            ( color, List.length (List.filter ((==) color) colors) )
+        )
+        [ Red, Blue, Green, Yellow ]
+
+
+getMostCommonColor : List Color -> Color
+getMostCommonColor colors =
+    colors
+        |> countColors
+        |> List.sortBy Tuple.second
+        |> List.reverse
+        |> List.head
+        |> Maybe.map Tuple.first
+        |> Maybe.withDefault Red
+
+
 encodeColor : Color -> E.Value
 encodeColor color =
     E.string (toString color)

@@ -1,87 +1,20 @@
 port module Game.Host exposing (..)
 
-import Game.Card exposing (PlayableCard)
+import Game.AI
+import Game.Action exposing (Action)
+import Game.Card
 import Game.Color
 import Game.Core
+import Html exposing (code)
 import Json.Decode as D
 import Json.Encode as E
+import Random
 import Session exposing (Session)
 import Utils exposing (UUID)
 
 
 type alias Game =
     Game.Core.Model
-
-
-type Action
-    = PlayerJoin UUID String
-    | PlayerLeave UUID
-    | PlayCard UUID PlayableCard
-    | DrawCard UUID
-    | SayUno UUID
-
-
-needToUpdate : Bool -> Game -> ( Game, Bool )
-needToUpdate updated game =
-    ( game, updated )
-
-
-onAction : Action -> Game -> ( Game, Bool )
-onAction action game =
-    case action of
-        PlayerJoin uuid name ->
-            game |> Game.Core.addPlayer ( uuid, name ) |> needToUpdate True
-
-        PlayerLeave uuid ->
-            game |> Game.Core.removePlayer uuid |> needToUpdate True
-
-        PlayCard uuid card ->
-            case game |> Game.Core.getPlayerIfTurn uuid |> Tuple.first of
-                Just player ->
-                    let
-                        ( updatedGame, played ) =
-                            Game.Core.playerPlayCard player card game
-                    in
-                    if played then
-                        updatedGame
-                            |> Game.Core.checkIfPreviousPlayerSaidUno
-                            |> Game.Core.resetSaidUno
-                            |> Game.Core.nextTurn
-                            |> Game.Core.applyCardEffect (Game.Card.getCard card)
-                            |> needToUpdate True
-
-                    else
-                        game |> needToUpdate False
-
-                Nothing ->
-                    game |> needToUpdate False
-
-        DrawCard uuid ->
-            case game |> Game.Core.getPlayerIfTurn uuid |> Tuple.first of
-                Just player ->
-                    game
-                        |> Game.Core.checkIfPreviousPlayerSaidUno
-                        |> Game.Core.resetSaidUno
-                        |> Game.Core.drawCard 1 player
-                        |> Game.Core.nextTurn
-                        |> needToUpdate True
-
-                Nothing ->
-                    game |> needToUpdate False
-
-        SayUno uuid ->
-            case game |> Game.Core.getPlayer uuid |> Tuple.first of
-                Just player ->
-                    game
-                        |> Game.Core.sayUndo player
-                        |> needToUpdate True
-
-                Nothing ->
-                    game |> needToUpdate False
-
-
-
---- Return the gGame.Client.Model for a given player ( local player )
 
 
 port outgoingData : E.Value -> Cmd msg
@@ -92,7 +25,13 @@ port incomingAction : (E.Value -> msg) -> Sub msg
 
 type HostMsg
     = IncomingAction E.Value
-    | SendData Game
+    | OnAction Action
+    | AITurnComplete (Result String Action)
+
+
+addAIPlayersCmd : Int -> Cmd HostMsg
+addAIPlayersCmd n =
+    Cmd.batch (List.repeat n (Random.generate (\username -> OnAction (Game.Action.PlayerJoin username username True)) Utils.randomCharacterGenerator))
 
 
 setHostGame : Game.Core.Model -> { a | session : Session } -> { a | session : Session }
@@ -128,24 +67,27 @@ getCurrentPlayer model =
             ""
 
 
-update : HostMsg -> { a | session : Session } -> ( { a | session : Session }, Cmd msg )
+update : HostMsg -> { a | session : Session } -> ( { a | session : Session }, Cmd HostMsg )
 update msg model =
     case ( msg, model |> getHostGame ) of
-        ( IncomingAction data, Just host ) ->
-            case D.decodeValue decodeAction data of
+        ( IncomingAction data, Just _ ) ->
+            case D.decodeValue Game.Action.decodeAction data of
                 Ok action ->
-                    case onAction action host of
-                        ( newHost, True ) ->
-                            update (SendData newHost) model
-
-                        ( newHost, _ ) ->
-                            ( model |> setHostGame newHost, Cmd.none )
+                    update (OnAction action) model
 
                 Err _ ->
                     ( model, Cmd.none )
 
-        ( SendData host, Just _ ) ->
-            ( model |> setHostGame host, outgoingData (encodeGame host) )
+        ( OnAction action, Just host ) ->
+            case Game.Action.executeAction action host of
+                ( newHost, True ) ->
+                    ( model |> setHostGame newHost, Cmd.batch [ outgoingData (encodeGame newHost), Game.AI.aiBatch AITurnComplete newHost ] )
+
+                ( newHost, _ ) ->
+                    ( model |> setHostGame newHost, Cmd.none )
+
+        ( AITurnComplete (Ok action), Just _ ) ->
+            update (OnAction action) model
 
         _ ->
             ( model, Cmd.none )
@@ -155,75 +97,6 @@ update msg model =
 -- DECODERS
 
 
-encodeAction : Action -> E.Value
-encodeAction action =
-    case action of
-        PlayCard uuid card ->
-            E.object
-                [ ( "action", E.string "playCard" )
-                , ( "uuid", E.string uuid )
-                , ( "card", Game.Card.encodePlayableCard card )
-                ]
-
-        DrawCard uuid ->
-            E.object
-                [ ( "action", E.string "drawCard" )
-                , ( "uuid", E.string uuid )
-                ]
-
-        PlayerJoin uuid name ->
-            E.object
-                [ ( "action", E.string "playerJoin" )
-                , ( "uuid", E.string uuid )
-                , ( "name", E.string name )
-                ]
-
-        PlayerLeave uuid ->
-            E.object
-                [ ( "action", E.string "playerLeave" )
-                , ( "uuid", E.string uuid )
-                ]
-
-        SayUno uuid ->
-            E.object
-                [ ( "action", E.string "sayUno" )
-                , ( "uuid", E.string uuid )
-                ]
-
-
-decodeAction : D.Decoder Action
-decodeAction =
-    D.field "action" D.string
-        |> D.andThen
-            (\action ->
-                case action of
-                    "playCard" ->
-                        D.map2 PlayCard
-                            (D.field "uuid" D.string)
-                            (D.field "card" Game.Card.decodePlayableCard)
-
-                    "drawCard" ->
-                        D.map DrawCard
-                            (D.field "uuid" D.string)
-
-                    "playerJoin" ->
-                        D.map2 PlayerJoin
-                            (D.field "uuid" D.string)
-                            (D.field "name" D.string)
-
-                    "playerLeave" ->
-                        D.map PlayerLeave
-                            (D.field "uuid" D.string)
-
-                    "sayUno" ->
-                        D.map SayUno
-                            (D.field "uuid" D.string)
-
-                    _ ->
-                        D.fail ("Unknown action: " ++ action)
-            )
-
-
 encodePlayer : Game.Core.Player -> E.Value
 encodePlayer player =
     E.object
@@ -231,6 +104,7 @@ encodePlayer player =
         , ( "uuid", E.string player.uuid )
         , ( "hand", E.list Game.Card.encodeCard player.hand )
         , ( "saidUno", E.bool player.saidUno )
+        , ( "isAI", E.bool player.isAI )
         ]
 
 

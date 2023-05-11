@@ -9,7 +9,6 @@ import Random
 import Route
 import Session exposing (Session)
 import Utils exposing (Code, UUID)
-import Utils.Pseudo
 
 
 
@@ -36,7 +35,7 @@ init session =
       , username = ""
       , code = Nothing
       }
-    , Random.generate SetUsername Utils.Pseudo.randomCharacterGenerator
+    , Random.generate SetUsername Utils.randomCharacterGenerator
     )
 
 

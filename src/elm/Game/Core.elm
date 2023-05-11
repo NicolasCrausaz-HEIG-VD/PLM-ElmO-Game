@@ -21,6 +21,7 @@ type alias Player =
     , uuid : UUID
     , hand : Hand
     , saidUno : Bool
+    , isAI : Bool
     }
 
 
@@ -80,14 +81,14 @@ shuffle list seed =
 -- LOGIC
 
 
-addPlayer : ( UUID, String ) -> Model -> Model
-addPlayer ( uuid, name ) game =
+addPlayer : ( UUID, String, Bool ) -> Model -> Model
+addPlayer ( uuid, name, isAI ) game =
     let
         ( hand, drawStack ) =
             List.Extra.splitAt 7 game.drawStack
     in
     { game
-        | players = game.players ++ [ { name = name, hand = hand, uuid = uuid, saidUno = False } ]
+        | players = game.players ++ [ { name = name, hand = hand, uuid = uuid, saidUno = False, isAI = isAI } ]
         , drawStack = drawStack
     }
 

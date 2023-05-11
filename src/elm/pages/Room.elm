@@ -1,12 +1,13 @@
 port module Pages.Room exposing (Model, Msg, init, subscriptions, toSession, update, view)
 
 import Dict
+import Game.Action
 import Game.Card
 import Game.CardView
 import Game.Client
 import Game.Color
 import Game.Host
-import Html exposing (Html, a, button, div, img, span, text)
+import Html exposing (Html, button, div, img, span, text)
 import Html.Attributes exposing (attribute, class, classList, disabled, id, src, style)
 import Html.Events exposing (onClick)
 import Json.Decode as D
@@ -16,7 +17,6 @@ import Random
 import Route
 import Session exposing (Session)
 import Utils exposing (Code, UUID)
-import Utils.Pseudo
 
 
 
@@ -47,10 +47,15 @@ init code session =
             ( initModel session, Network.joinRoom code )
 
         Session.Host _ data ->
-            ( initModel session, outgoingAction (Game.Host.encodeAction (Game.Host.PlayerJoin data.playerUUID data.username)) )
+            ( initModel session
+            , Cmd.batch
+                [ outgoingAction (Game.Action.encodeAction (Game.Action.PlayerJoin data.playerUUID data.username False))
+                , Cmd.map HostMsg (Game.Host.addAIPlayersCmd 2)
+                ]
+            )
 
         Session.Client data ->
-            ( initModel session, outgoingAction (Game.Host.encodeAction (Game.Host.PlayerJoin data.playerUUID data.username)) )
+            ( initModel session, outgoingAction (Game.Action.encodeAction (Game.Action.PlayerJoin data.playerUUID data.username False)) )
 
 
 
@@ -80,7 +85,7 @@ type ClientMsg
     | ClickCard Game.Card.Card
     | SetState GameState
     | IncomingData E.Value
-    | SendAction Game.Host.Action
+    | SendAction Game.Action.Action
     | SayUno
 
 
@@ -88,13 +93,13 @@ clientUpdate : ClientMsg -> Model -> ( Model, Cmd Msg )
 clientUpdate msg model =
     case ( msg, model.game ) of
         ( DrawCard, Just game ) ->
-            clientUpdate (SendAction (Game.Host.DrawCard game.localPlayer.uuid)) { model | state = Playing }
+            clientUpdate (SendAction (Game.Action.DrawCard game.localPlayer.uuid)) { model | state = Playing }
 
         ( PlayCard card, Just game ) ->
-            clientUpdate (SendAction (Game.Host.PlayCard game.localPlayer.uuid card)) { model | state = Playing }
+            clientUpdate (SendAction (Game.Action.PlayCard game.localPlayer.uuid card)) { model | state = Playing }
 
         ( SayUno, Just game ) ->
-            clientUpdate (SendAction (Game.Host.SayUno game.localPlayer.uuid)) { model | state = Playing }
+            clientUpdate (SendAction (Game.Action.SayUno game.localPlayer.uuid)) { model | state = Playing }
 
         ( ClickCard card, Just _ ) ->
             case card of
@@ -108,7 +113,7 @@ clientUpdate msg model =
             ( { model | state = state }, Cmd.none )
 
         ( SendAction action, _ ) ->
-            ( model, outgoingAction (Game.Host.encodeAction action) )
+            ( model, outgoingAction (Game.Action.encodeAction action) )
 
         ( IncomingData data, _ ) ->
             case D.decodeValue Game.Client.decodeModel data of
@@ -126,14 +131,18 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         HostMsg hostMsg ->
-            Game.Host.update hostMsg model
+            let
+                ( updatedModel, cmd ) =
+                    Game.Host.update hostMsg model
+            in
+            ( updatedModel, Cmd.map HostMsg cmd )
 
         ClientMsg clientMsg ->
             clientUpdate clientMsg model
 
         ConnectClientGame ( code, playerUUID, success ) ->
             if success then
-                ( model, Random.generate (\username -> StartClientGame ( code, playerUUID, username )) Utils.Pseudo.randomCharacterGenerator )
+                ( model, Random.generate (\username -> StartClientGame ( code, playerUUID, username )) Utils.randomCharacterGenerator )
 
             else
                 ( model, Route.replaceUrl model.session.key Route.Lobby )
