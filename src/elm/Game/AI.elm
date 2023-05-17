@@ -77,14 +77,6 @@ getBestColor cards =
         |> Color.getMostCommonColor
 
 
-colorPercentage : Color.Color -> List ( Card, Color.Color ) -> Float
-colorPercentage color cards =
-    cards
-        |> List.filter (\( _, cardColor ) -> cardColor == color)
-        |> List.length
-        |> (\count -> toFloat count / toFloat (List.length cards))
-
-
 getPlayableCard : Color.Color -> Card -> PlayableCard
 getPlayableCard color card =
     case card of
@@ -133,7 +125,7 @@ getBestCard player game =
                 playableCards
                     |> List.sortBy cardPriority
                     |> List.head
-                    |> Maybe.map (getPlayableCard bestColor)
+                    |> Maybe.map (getPlayableCard (getBestColor (filterColorCards player.hand)))
 
 
 cardPriority : Card -> Int
