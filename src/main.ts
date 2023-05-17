@@ -27,6 +27,9 @@ type Ports = {
   }
   outgoingAction: {
     subscribe: (callback: (data: Action) => void) => void;
+  },
+  lostConnection: {
+    send: (uuid: string) => void;
   }
 }
 
@@ -45,6 +48,10 @@ appState.ports?.joinRoom?.subscribe(async (code) => {
 
     network.channel('data').on(data => {
       appState.ports?.incomingData?.send(data);
+    });
+
+    network.on('removeConnection', (conn) => {
+      appState.ports?.lostConnection?.send(conn.peer);
     });
   
     appState.ports?.outgoingAction?.subscribe((action) => {

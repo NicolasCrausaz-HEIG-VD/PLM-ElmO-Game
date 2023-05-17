@@ -1,6 +1,5 @@
 port module Pages.Room exposing (Model, Msg, init, subscriptions, toSession, update, view)
 
-import Dict
 import Game.Action
 import Game.Card
 import Game.CardView
@@ -77,6 +76,7 @@ type Msg
     | ClientMsg ClientMsg
     | ConnectClientGame ( Code, UUID, Bool )
     | StartClientGame ( Code, UUID, String )
+    | LostConnection Code
 
 
 type ClientMsg
@@ -150,6 +150,9 @@ update msg model =
         StartClientGame ( code, playerUUID, username ) ->
             init code (model.session |> Session.update (Session.Client { code = code, playerUUID = playerUUID, username = username }))
 
+        LostConnection _ ->
+            ( model, Route.replaceUrl model.session.key Route.Lobby )
+
 
 
 -- VIEW
@@ -169,7 +172,7 @@ displayPlayerDeck model player =
     div [ class "player-deck", classList [ ( "active", model.currentPlayer == player.uuid ) ] ]
         [ span [ class "player-name" ] [ text player.name ]
         , div [ class "cards" ]
-            (List.map (\card -> Game.CardView.cardView [ class "card", onClick (ClickCard card), disabled (not (Game.Card.canPlayCard ( model.activeCard, model.activeColor ) card)) ] card) (player.hand |> Game.Card.sortCards))
+            (List.map (\card -> Game.CardView.cardView [ class "card", onClick (ClickCard card), disabled (not (Game.Client.hintPlayCard model card)) ] card) (player.hand |> Game.Card.sortCards))
         ]
 
 
@@ -187,11 +190,10 @@ viewGame model =
         [ div [ class "topbar" ] (List.map (displayDistantPlayer model) model.distantPlayers)
         , displayPlayerDeck model model.localPlayer
         , div [ class "center" ]
-            [ displayDrawStack model.drawStack (model.localPlayer.hand |> Game.Card.getPlayableCards ( model.activeCard, model.activeColor ) |> List.isEmpty)
+            [ displayDrawStack model.drawStack (model |> Game.Client.hintDrawCard)
             , div [ class "active-card" ]
                 [ case ( model.activeCard, model.activeColor ) of
                     ( Just card, Just color ) ->
-                        -- Game.CardView.cardView [ class "card" ] card // add a data-color attrbute to display the color like yellow / red / blue / green
                         Game.CardView.cardView [ class "card", attribute "data-color" (color |> Game.Color.toString) ] card
 
                     _ ->
@@ -281,6 +283,7 @@ subscriptions _ =
         [ incomingData (ClientMsg << IncomingData)
         , Game.Host.incomingAction (HostMsg << Game.Host.IncomingAction)
         , Network.joinedRoom ConnectClientGame
+        , Network.lostConnection LostConnection
         ]
 
 

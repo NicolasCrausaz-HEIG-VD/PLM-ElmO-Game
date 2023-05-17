@@ -38,6 +38,16 @@ showUnoButton model =
     List.length model.localPlayer.hand == 1 && not model.localPlayer.saidUno && model.currentPlayer /= model.localPlayer.uuid
 
 
+hintDrawCard : Model -> Bool
+hintDrawCard model =
+    (model.currentPlayer == model.localPlayer.uuid) && (model.localPlayer.hand |> Game.Card.getPlayableCards ( model.activeCard, model.activeColor ) |> List.isEmpty)
+
+
+hintPlayCard : Model -> Card -> Bool
+hintPlayCard model card =
+    (model.currentPlayer == model.localPlayer.uuid) && Game.Card.canPlayCard ( model.activeCard, model.activeColor ) card
+
+
 encodeDistantPlayer : DistantPlayer -> E.Value
 encodeDistantPlayer player =
     E.object
