@@ -146,4 +146,5 @@ encodeGame game =
         , ( "drawStack", E.int (game.drawStack |> List.length) )
         , ( "activeCard", Utils.maybeEncode Game.Card.encodeCard game.activeCard )
         , ( "activeColor", Utils.maybeEncode Game.Color.encodeColor game.activeColor )
+        , ( "gameOver" , E.bool (game |> Game.Core.isGameOver))
         ]

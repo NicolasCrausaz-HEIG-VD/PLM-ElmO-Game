@@ -29,6 +29,7 @@ type alias Model =
     , drawStack : Int
     , activeCard : Maybe Card
     , activeColor : Maybe Color
+    , gameOver : Bool
     }
 
 
@@ -45,7 +46,6 @@ hintDrawCard model =
 hintPlayCard : Model -> Card -> Bool
 hintPlayCard model card =
     (model.currentPlayer == model.localPlayer.uuid) && Game.Card.canPlayCard ( model.activeCard, model.activeColor ) card
-
 
 decodeDistantPlayer : D.Decoder DistantPlayer
 decodeDistantPlayer =
@@ -66,10 +66,11 @@ decodeLocalPlayer =
 
 decodeModel : D.Decoder Model
 decodeModel =
-    D.map6 Model
+    D.map7 Model
         (D.field "distantPlayers" (D.list decodeDistantPlayer))
         (D.field "localPlayer" decodeLocalPlayer)
         (D.field "currentPlayer" D.string)
         (D.field "drawStack" D.int)
         (D.field "activeCard" (D.nullable Game.Card.decodeCard))
         (D.field "activeColor" (D.nullable Game.Color.decodeColor))
+        (D.field "gameOver" D.bool)
