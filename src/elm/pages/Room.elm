@@ -1,6 +1,5 @@
 port module Pages.Room exposing (Model, Msg, init, subscriptions, toSession, update, view)
 
-import Dict
 import Game.Action
 import Game.Card
 import Game.CardView
