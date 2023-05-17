@@ -1,4 +1,4 @@
-module Game.AI exposing (..)
+module Game.AI exposing (aiBatch, getBestAction)
 
 import Game.Action exposing (Action)
 import Game.Card as Card exposing (Card, PlayableCard(..))
@@ -50,21 +50,26 @@ randomToTask generator =
         |> Task.map (Tuple.first << Random.step generator << Random.initialSeed << Time.posixToMillis)
 
 
-onEachTurn : Game -> Player -> Maybe (Task String Action)
-onEachTurn _ player =
+createDelayTask : Int -> Int -> Task String ()
+createDelayTask minDelay maxDelay =
     let
         delayGenerator =
-            Random.int 250 2000
+            Random.int minDelay maxDelay
     in
+    randomToTask delayGenerator
+        |> Task.andThen
+            (\delay ->
+                Process.sleep (toFloat delay)
+            )
+        |> Task.mapError (\_ -> "Impossible error")
+
+
+onEachTurn : Game -> Player -> Maybe (Task String Action)
+onEachTurn _ player =
     if not player.saidUno && List.length player.hand == 1 then
         Just
-            (randomToTask delayGenerator
-                |> Task.andThen
-                    (\delay ->
-                        Process.sleep (toFloat delay)
-                            |> Task.andThen (\_ -> Task.succeed (Game.Action.SayUno player.uuid))
-                    )
-                |> Task.mapError (\_ -> "Impossible error")
+            (createDelayTask 250 2000
+                |> Task.andThen (\_ -> Task.succeed (Game.Action.SayUno player.uuid))
             )
 
     else
@@ -73,25 +78,9 @@ onEachTurn _ player =
 
 onCurrentTurn : Player -> Game -> Task String Action
 onCurrentTurn player game =
-    let
-        delayGenerator =
-            Random.int 400 3000
-    in
-    randomToTask delayGenerator
+    createDelayTask 400 3000
         |> Task.andThen
-            (\delay ->
-                Process.sleep (toFloat delay)
-                    |> Task.andThen
-                        (\_ ->
-                            case getBestCard player game of
-                                Just card ->
-                                    Task.succeed (Game.Action.PlayCard player.uuid card)
-
-                                Nothing ->
-                                    Task.succeed (Game.Action.DrawCard player.uuid)
-                        )
-            )
-        |> Task.mapError (\_ -> "Impossible error")
+            (\_ -> Task.succeed (getBestAction player game))
 
 
 filterColorCards : List Card -> List ( Card, Color.Color )
@@ -179,3 +168,13 @@ cardPriority card =
 
         _ ->
             4
+
+
+getBestAction : Player -> Game -> Action
+getBestAction player game =
+    case getBestCard player game of
+        Just card ->
+            Game.Action.PlayCard player.uuid card
+
+        Nothing ->
+            Game.Action.DrawCard player.uuid

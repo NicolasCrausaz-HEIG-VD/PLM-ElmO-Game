@@ -7,6 +7,7 @@ import Game.Color
 import Game.Core
 import Json.Decode as D
 import Json.Encode as E
+import Process
 import Random
 import Session exposing (Session)
 import Task
@@ -28,6 +29,12 @@ type HostMsg
     = IncomingAction E.Value
     | OnAction Action
     | AITurnComplete (Result String Action)
+    | OnTimeout Game
+
+
+startTimeoutCmd : Float -> Game -> Cmd HostMsg
+startTimeoutCmd ms game =
+    Task.perform OnTimeout (Process.sleep ms |> Task.andThen (\_ -> Task.succeed game))
 
 
 addAIPlayersCmd : Int -> Cmd HostMsg
@@ -96,13 +103,21 @@ update msg model =
         ( OnAction action, Just host ) ->
             case Game.Action.executeAction action host of
                 ( newHost, True ) ->
-                    ( model |> setHostGame newHost, Cmd.batch [ outgoingData (encodeGame newHost), Game.AI.aiBatch AITurnComplete newHost ] )
+                    ( model |> setHostGame newHost, Cmd.batch [ outgoingData (encodeGame newHost), Game.AI.aiBatch AITurnComplete newHost, startTimeoutCmd 10000 newHost ] )
 
                 ( newHost, _ ) ->
                     ( model |> setHostGame newHost, Cmd.none )
 
         ( AITurnComplete (Ok action), Just _ ) ->
             update (OnAction action) model
+
+        ( OnTimeout host, Just _ ) ->
+            case Game.Core.getCurrentPlayer host of
+                ( Just player, _ ) ->
+                    update (OnAction (Game.AI.getBestAction player host)) model
+
+                _ ->
+                    ( model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
