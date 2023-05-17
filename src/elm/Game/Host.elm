@@ -19,6 +19,10 @@ type alias Game =
     Game.Core.Model
 
 
+type alias ModelWithSession a =
+    { a | session : Session }
+
+
 port outgoingData : E.Value -> Cmd msg
 
 
@@ -30,6 +34,11 @@ type HostMsg
     | OnAction Action
     | AITurnComplete (Result String Action)
     | OnTimeout Game
+
+
+timeoutDuration : Float
+timeoutDuration =
+    10000.0
 
 
 startTimeoutCmd : Float -> Game -> Cmd HostMsg
@@ -56,7 +65,7 @@ actionCmd action =
         |> Task.perform identity
 
 
-setHostGame : Game.Core.Model -> { a | session : Session } -> { a | session : Session }
+setHostGame : Game.Core.Model -> ModelWithSession a -> ModelWithSession a
 setHostGame game model =
     case model.session.session of
         Session.Host config roomData ->
@@ -66,7 +75,7 @@ setHostGame game model =
             model
 
 
-getHostGame : { a | session : Session } -> Maybe Game.Core.Model
+getHostGame : ModelWithSession a -> Maybe Game.Core.Model
 getHostGame model =
     case model.session.session of
         Session.Host config _ ->
@@ -76,7 +85,7 @@ getHostGame model =
             Nothing
 
 
-getCurrentPlayer : { a | session : Session } -> Utils.UUID
+getCurrentPlayer : ModelWithSession a -> Utils.UUID
 getCurrentPlayer model =
     case model.session.session of
         Session.Host _ roomData ->
@@ -89,7 +98,17 @@ getCurrentPlayer model =
             ""
 
 
-update : HostMsg -> { a | session : Session } -> ( { a | session : Session }, Cmd HostMsg )
+updateHostGame : Action -> Game -> ModelWithSession a -> ( ModelWithSession a, Cmd HostMsg )
+updateHostGame action host model =
+    case Game.Action.executeAction action host of
+        ( newHost, True ) ->
+            ( model |> setHostGame newHost, Cmd.batch [ outgoingData (encodeGame newHost), Game.AI.aiBatch AITurnComplete newHost, startTimeoutCmd timeoutDuration newHost ] )
+
+        ( newHost, _ ) ->
+            ( model |> setHostGame newHost, Cmd.none )
+
+
+update : HostMsg -> ModelWithSession a -> ( ModelWithSession a, Cmd HostMsg )
 update msg model =
     case ( msg, model |> getHostGame ) of
         ( IncomingAction data, Just _ ) ->
@@ -101,30 +120,25 @@ update msg model =
                     ( model, Cmd.none )
 
         ( OnAction action, Just host ) ->
-            case Game.Action.executeAction action host of
-                ( newHost, True ) ->
-                    ( model |> setHostGame newHost, Cmd.batch [ outgoingData (encodeGame newHost), Game.AI.aiBatch AITurnComplete newHost, startTimeoutCmd 10000 newHost ] )
+            updateHostGame action host model
 
-                ( newHost, _ ) ->
-                    ( model |> setHostGame newHost, Cmd.none )
-
-        ( AITurnComplete (Ok action), Just _ ) ->
+        ( AITurnComplete (Ok action), _ ) ->
             update (OnAction action) model
 
-        ( OnTimeout host, Just _ ) ->
-            case Game.Core.getCurrentPlayer host of
-                ( Just player, _ ) ->
-                    update (OnAction (Game.AI.getBestAction player host)) model
+        ( OnTimeout prevHost, Just currentHost ) ->
+            if prevHost == currentHost then
+                case Game.Core.getCurrentPlayer prevHost of
+                    ( Just player, _ ) ->
+                        update (OnAction (Game.AI.getBestAction player prevHost)) model
 
-                _ ->
-                    ( model, Cmd.none )
+                    _ ->
+                        ( model, Cmd.none )
+
+            else
+                ( model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
-
-
-
--- DECODERS
 
 
 encodePlayer : Game.Core.Player -> E.Value
@@ -146,5 +160,5 @@ encodeGame game =
         , ( "drawStack", E.int (game.drawStack |> List.length) )
         , ( "activeCard", Utils.maybeEncode Game.Card.encodeCard game.activeCard )
         , ( "activeColor", Utils.maybeEncode Game.Color.encodeColor game.activeColor )
-        , ( "gameOver" , E.bool (game |> Game.Core.isGameOver))
+        , ( "gameOver", E.bool (game |> Game.Core.isGameOver) )
         ]

@@ -30,6 +30,7 @@ type alias Model =
     , drawStack : Draw
     , activeCard : Maybe Card
     , activeColor : Maybe Color
+    , turn : Int
     }
 
 
@@ -197,7 +198,7 @@ playerPlayCard player playableCard game =
 
 nextTurn : Model -> Model
 nextTurn game =
-    { game | players = nextPlayer game.players }
+    { game | players = nextPlayer game.players, turn = game.turn + 1 }
 
 
 nextPlayer : List Player -> List Player
@@ -264,6 +265,7 @@ emptyGame =
     , drawStack = allCards
     , activeCard = Nothing
     , activeColor = Nothing
+    , turn = 0
     }
 
 

@@ -87,6 +87,7 @@ type ClientMsg
     | SetState GameState
     | IncomingData E.Value
     | SendAction Game.Action.Action
+    | GoTo Route.Route
     | SayUno
 
 
@@ -112,6 +113,9 @@ clientUpdate msg model =
 
         ( SetState state, _ ) ->
             ( { model | state = state }, Cmd.none )
+
+        ( GoTo route, _ ) ->
+            ( model, Route.replaceUrl model.session.key route )
 
         ( SendAction action, _ ) ->
             ( model, outgoingAction (Game.Action.encodeAction action) )
@@ -276,8 +280,8 @@ viewGameOver : Game.Client.Model -> Html ClientMsg
 viewGameOver model =
     div [ class "modal" ]
         [ div [ class "modal-content" ]
-            [ div [ class "title" ] [ text "Game over !" ]
-            , div [] [ text "" ]
+            [ img [ src "/GameOver.svg", class "logo" ] []
+            , button [ onClick (GoTo Route.Lobby) ] [ text "Back to lobby" ]
             ]
         ]
 
