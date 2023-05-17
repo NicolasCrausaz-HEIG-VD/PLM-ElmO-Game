@@ -25,6 +25,7 @@ import Utils exposing (Code, UUID)
 type GameState
     = Playing
     | SelectColor Game.Card.Card
+    | GameOver
 
 
 type alias Model =
@@ -154,6 +155,20 @@ update msg model =
             ( model, Route.replaceUrl model.session.key Route.Lobby )
 
 
+getGameState : Model -> GameState
+getGameState model =
+    case model.game of
+        Just game ->
+            if game.gameOver then
+                GameOver
+
+            else
+                model.state
+
+        Nothing ->
+            model.state
+
+
 
 -- VIEW
 
@@ -257,18 +272,31 @@ viewChoice game card =
         ]
 
 
+viewGameOver : Game.Client.Model -> Html ClientMsg
+viewGameOver model =
+    div [ class "modal" ]
+        [ div [ class "modal-content" ]
+            [ div [ class "title" ] [ text "Game over !" ]
+            , div [] [ text "" ]
+            ]
+        ]
+
+
 view : Model -> { title : String, content : Html Msg }
 view model =
     { title = "Room Elmo"
     , content =
-        case ( model.game, model.state ) of
+        case ( model.game, getGameState model ) of
             ( Just game, Playing ) ->
                 viewGame game |> Html.map ClientMsg
 
             ( Just game, SelectColor card ) ->
                 viewChoice game card |> Html.map ClientMsg
 
-            ( Nothing, _ ) ->
+            ( Just game, GameOver ) ->
+                viewGameOver game |> Html.map ClientMsg
+
+            _ ->
                 div [] [ text "Loading..." ]
     }
 

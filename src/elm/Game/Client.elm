@@ -47,16 +47,6 @@ hintPlayCard : Model -> Card -> Bool
 hintPlayCard model card =
     (model.currentPlayer == model.localPlayer.uuid) && Game.Card.canPlayCard ( model.activeCard, model.activeColor ) card
 
-
-encodeDistantPlayer : DistantPlayer -> E.Value
-encodeDistantPlayer player =
-    E.object
-        [ ( "name", E.string player.name )
-        , ( "uuid", E.string player.uuid )
-        , ( "cards", E.int player.cards )
-        ]
-
-
 decodeDistantPlayer : D.Decoder DistantPlayer
 decodeDistantPlayer =
     D.map3 DistantPlayer
