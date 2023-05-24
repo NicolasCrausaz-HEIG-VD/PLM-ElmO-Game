@@ -96,6 +96,13 @@ type ClientMsg
     | GoTo Route.Route
     | SayUno
 
+playSoundOnUpdate : Game.Client.Model -> Cmd Msg
+playSoundOnUpdate model =
+    case model.action of
+        Game.Action.PlayCard _ _ -> playSound "flipcard"
+        Game.Action.DrawCard _ -> playSound "flipcard"
+        Game.Action.SayUno _ -> playSound "elmo"
+        _ -> Cmd.none
 
 clientUpdate : ClientMsg -> Model -> ( Model, Cmd Msg )
 clientUpdate msg model =
@@ -129,7 +136,7 @@ clientUpdate msg model =
         ( IncomingData data, _ ) ->
             case D.decodeValue Game.Client.decodeModel data of
                 Ok newGame ->
-                    ( { model | game = Just newGame }, Cmd.none )
+                    ( { model | game = Just newGame }, playSoundOnUpdate newGame )
 
                 Err _ ->
                     ( model, Cmd.none )
