@@ -125,6 +125,7 @@ interface HostGameState {
   activeCard: string;
   activeColor: string;
   gameOver: boolean;
+  action: Action;
 }
 
 interface ClientGameState {
@@ -144,6 +145,7 @@ interface ClientGameState {
   activeCard: string;
   activeColor: string;
   gameOver: boolean;
+  action: Action;
 }
 
 function hostToClient(host: HostGameState, localPlayerUUID: string): ClientGameState {
@@ -159,7 +161,8 @@ function hostToClient(host: HostGameState, localPlayerUUID: string): ClientGameS
     drawStack: host.drawStack,
     activeCard: host.activeCard,
     activeColor: host.activeColor,
-    gameOver: host.gameOver
+    gameOver: host.gameOver,
+    action: host.action,
   }
 }
 

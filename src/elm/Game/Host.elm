@@ -35,7 +35,6 @@ type HostMsg
     | OnAction Action
     | AITurnComplete (Result String Action)
     | OnTimeout Game
-    | Tick Time.Posix
 
 
 timeoutDuration : Float
@@ -102,12 +101,25 @@ getCurrentPlayer model =
 
 updateHostGame : Action -> Game -> ModelWithSession a -> ( ModelWithSession a, Cmd HostMsg )
 updateHostGame action host model =
-    case Game.Action.executeAction action host of
-        ( newHost, True ) ->
-            ( model |> setHostGame newHost, Cmd.batch [ outgoingData (encodeGame newHost), Game.AI.aiBatch AITurnComplete newHost, startTimeoutCmd timeoutDuration newHost ] )
+    let
+        ( newHost, success ) =
+            Game.Action.executeAction action host
 
-        ( newHost, _ ) ->
-            ( model |> setHostGame newHost, Cmd.none )
+        updatedModel =
+            model |> setHostGame newHost
+
+        cmds =
+            [ outgoingData (encodeGame newHost action), Game.AI.aiBatch AITurnComplete newHost ]
+    in
+    if success then
+        if newHost.turn /= host.turn || newHost.turn == 0 then
+            ( updatedModel, Cmd.batch (cmds ++ [ startTimeoutCmd timeoutDuration newHost ]) )
+
+        else
+            ( updatedModel, Cmd.batch cmds )
+
+    else
+        ( updatedModel, Cmd.none )
 
 
 update : HostMsg -> ModelWithSession a -> ( ModelWithSession a, Cmd HostMsg )
@@ -154,8 +166,8 @@ encodePlayer player =
         ]
 
 
-encodeGame : Game -> E.Value
-encodeGame game =
+encodeGame : Game -> Action -> E.Value
+encodeGame game action =
     E.object
         [ ( "players", E.list encodePlayer game.players )
         , ( "currentPlayer", Utils.maybeEncode E.string (Maybe.map (\p -> p.uuid) (game |> Game.Core.getCurrentPlayer |> Tuple.first)) )
@@ -163,4 +175,5 @@ encodeGame game =
         , ( "activeCard", Utils.maybeEncode Game.Card.encodeCard game.activeCard )
         , ( "activeColor", Utils.maybeEncode Game.Color.encodeColor game.activeColor )
         , ( "gameOver", E.bool (game |> Game.Core.isGameOver) )
+        , ( "action", Game.Action.encodeAction action )
         ]

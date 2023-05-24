@@ -1,5 +1,6 @@
 module Game.Client exposing (..)
 
+import Game.Action exposing (Action)
 import Game.Card exposing (Card, PlayableCard(..))
 import Game.Color exposing (Color)
 import Game.Core exposing (Hand)
@@ -30,6 +31,7 @@ type alias Model =
     , activeCard : Maybe Card
     , activeColor : Maybe Color
     , gameOver : Bool
+    , action : Action
     }
 
 
@@ -67,7 +69,7 @@ decodeLocalPlayer =
 
 decodeModel : D.Decoder Model
 decodeModel =
-    D.map7 Model
+    D.map8 Model
         (D.field "distantPlayers" (D.list decodeDistantPlayer))
         (D.field "localPlayer" decodeLocalPlayer)
         (D.field "currentPlayer" D.string)
@@ -75,3 +77,4 @@ decodeModel =
         (D.field "activeCard" (D.nullable Game.Card.decodeCard))
         (D.field "activeColor" (D.nullable Game.Color.decodeColor))
         (D.field "gameOver" D.bool)
+        (D.field "action" Game.Action.decodeAction)

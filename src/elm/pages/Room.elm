@@ -81,7 +81,6 @@ type Msg
     | ConnectClientGame ( Code, UUID, Bool )
     | StartClientGame ( Code, UUID, String )
     | LostConnection Code
-    | MainTick Time.Posix
 
 
 type ClientMsg
@@ -93,7 +92,6 @@ type ClientMsg
     | SendAction Game.Action.Action
     | GoTo Route.Route
     | SayUno
-    | Tick Time.Posix
 
 
 clientUpdate : ClientMsg -> Model -> ( Model, Cmd Msg )
@@ -133,10 +131,6 @@ clientUpdate msg model =
                 Err _ ->
                     ( model, Cmd.none )
 
-        ( Tick time, _ ) ->
-            ( model, Cmd.none )
-
-        -- TODO: implement
         _ ->
             ( model, Cmd.none )
 
@@ -166,16 +160,6 @@ update msg model =
 
         LostConnection _ ->
             ( model, Route.replaceUrl model.session.key Route.Lobby )
-
-        MainTick time ->
-            let
-                ( model1, cmd1 ) =
-                    Game.Host.update (Game.Host.Tick time) model
-
-                ( model2, cmd2 ) =
-                    clientUpdate (Tick time) model1
-            in
-            ( model2, Cmd.batch [ Cmd.map HostMsg cmd1, cmd2 ] )
 
 
 getGameState : Model -> GameState
@@ -339,7 +323,6 @@ subscriptions model =
         , Game.Host.incomingAction (HostMsg << Game.Host.IncomingAction)
         , Network.joinedRoom ConnectClientGame
         , Network.lostConnection LostConnection
-        , Time.every 1000 MainTick
         ]
 
 
