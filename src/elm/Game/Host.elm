@@ -11,6 +11,7 @@ import Process
 import Random
 import Session exposing (Session)
 import Task
+import Time
 import UUID
 import Utils
 
@@ -34,6 +35,7 @@ type HostMsg
     | OnAction Action
     | AITurnComplete (Result String Action)
     | OnTimeout Game
+    | Tick Time.Posix
 
 
 timeoutDuration : Float
