@@ -71,6 +71,9 @@ port incomingData : (E.Value -> msg) -> Sub msg
 port outgoingAction : E.Value -> Cmd msg
 
 
+port playSound : String -> Cmd msg
+
+
 
 --- UPDATE
 
@@ -333,7 +336,7 @@ view model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.batch
         [ incomingData (ClientMsg << IncomingData)
         , Game.Host.incomingAction (HostMsg << Game.Host.IncomingAction)

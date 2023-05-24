@@ -31,6 +31,9 @@ type Ports = {
   lostConnection: {
     send: (uuid: string) => void;
   }
+  playSound: {
+    subscribe: (callback: (name: string) => void) => void;
+  }
 }
 
 const appState = Elm.Main.init<Ports>({
@@ -103,7 +106,10 @@ appState.ports?.createRoom?.subscribe(async () => {
   appState.ports?.createdRoom?.send(code);
 });
 
-
+appState.ports?.playSound?.subscribe((name) => {
+  console.log('playSound', name);
+  playSound(name);
+});
 
 
 type Action = {
@@ -167,4 +173,8 @@ function hostToClient(host: HostGameState, localPlayerUUID: string): ClientGameS
 function rotateArray<T extends { uuid: string }>(arr: T[], localPlayerUUID: string): T[] {
   const index = arr.findIndex(item => item.uuid === localPlayerUUID);
   return [...arr.slice(index), ...arr.slice(0, index)];
+}
+
+function playSound(name: string) {
+  new Audio(`/sounds/${name}.mp3`).play();
 }
