@@ -335,8 +335,7 @@ addCardToDrawStack cardToAdd drawStack =
 
 isGameOver : Model -> Bool
 isGameOver game =
-    List.length game.players
-        /= 1
+    (List.length game.players > 1)
         && (game.players
                 |> List.filter (\player -> not (List.isEmpty player.hand))
                 |> List.length

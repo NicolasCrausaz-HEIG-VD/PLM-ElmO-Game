@@ -477,12 +477,8 @@ $yellow: #ffee02;
   
   height: 40px;
   width: 40px;
+  margin: 10px;
   text-align: center;
-
-  .countdown-number {
-    color: white;
-    line-height: 40px;
-  }
 
   svg {
     position: absolute;
@@ -497,7 +493,7 @@ $yellow: #ffee02;
     stroke-dasharray: 113px;
     stroke-dashoffset: 0px;
     stroke-linecap: round;
-    stroke-width: 2px;
+    stroke-width: 4px;
     stroke: white;
     fill: none;
     animation: countdown 10s linear infinite forwards;
@@ -506,12 +502,18 @@ $yellow: #ffee02;
   @keyframes countdown {
     from {
       stroke-dashoffset: 0px;
+      stroke: white;
+    }
+    50% {
+      stroke: white;
     }
     to {
       stroke-dashoffset: 113px;
+      stroke: red;
     }
   }
 }
+
 
 
 

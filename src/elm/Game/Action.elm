@@ -127,7 +127,10 @@ encodeAction action =
                 ]
 
         Batch actions ->
-            E.list encodeAction actions
+            E.object
+                [ ( "action", E.string "batch" )
+                , ( "actions", E.list encodeAction actions )
+                ]
 
 
 decodeAction : D.Decoder Action

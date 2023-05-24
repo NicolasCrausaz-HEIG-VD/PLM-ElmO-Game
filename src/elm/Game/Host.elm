@@ -11,7 +11,6 @@ import Process
 import Random
 import Session exposing (Session)
 import Task
-import Time
 import UUID
 import Utils
 
@@ -134,7 +133,11 @@ update msg model =
                     ( model, Cmd.none )
 
         ( OnAction action, Just host ) ->
-            updateHostGame action host model
+            if Game.Core.isGameOver host then
+                ( model, Cmd.none )
+
+            else
+                updateHostGame action host model
 
         ( AITurnComplete (Ok action), _ ) ->
             update (OnAction action) model
@@ -175,5 +178,6 @@ encodeGame game action =
         , ( "activeCard", Utils.maybeEncode Game.Card.encodeCard game.activeCard )
         , ( "activeColor", Utils.maybeEncode Game.Color.encodeColor game.activeColor )
         , ( "gameOver", E.bool (game |> Game.Core.isGameOver) )
+        , ( "turn", E.int game.turn )
         , ( "action", Game.Action.encodeAction action )
         ]

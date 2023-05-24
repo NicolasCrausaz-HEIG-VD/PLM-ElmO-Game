@@ -17,7 +17,6 @@ import Route
 import Session exposing (Session)
 import Svg exposing (circle, svg)
 import Svg.Attributes exposing (cx, cy, r)
-import Time
 import Utils exposing (Code, UUID)
 
 
@@ -96,13 +95,25 @@ type ClientMsg
     | GoTo Route.Route
     | SayUno
 
-playSoundOnUpdate : Game.Client.Model -> Cmd Msg
-playSoundOnUpdate model =
-    case model.action of
-        Game.Action.PlayCard _ _ -> playSound "flipcard"
-        Game.Action.DrawCard _ -> playSound "flipcard"
-        Game.Action.SayUno _ -> playSound "elmo"
-        _ -> Cmd.none
+
+playSoundOnAction : Game.Client.Model -> Game.Action.Action -> Cmd msg
+playSoundOnAction model action =
+    case action of
+        Game.Action.PlayCard _ _ ->
+            playSound "/sounds/flipcard.mp3"
+
+        Game.Action.DrawCard _ ->
+            playSound "/sounds/flipcard.mp3"
+
+        Game.Action.SayUno _ ->
+            playSound "/sounds/elmo.mp3"
+
+        Game.Action.Batch actions ->
+            Cmd.batch (List.map (playSoundOnAction model) actions)
+
+        _ ->
+            Cmd.none
+
 
 clientUpdate : ClientMsg -> Model -> ( Model, Cmd Msg )
 clientUpdate msg model =
@@ -136,7 +147,7 @@ clientUpdate msg model =
         ( IncomingData data, _ ) ->
             case D.decodeValue Game.Client.decodeModel data of
                 Ok newGame ->
-                    ( { model | game = Just newGame }, playSoundOnUpdate newGame )
+                    ( { model | game = Just newGame }, playSoundOnAction newGame newGame.action )
 
                 Err _ ->
                     ( model, Cmd.none )
@@ -201,15 +212,26 @@ displayDistantPlayer model player =
 
 displayPlayerDeck : Game.Client.Model -> Game.Client.LocalPlayer -> Html ClientMsg
 displayPlayerDeck model player =
-    div [ class "player-deck", classList [ ( "active", model.currentPlayer == player.uuid ) ] ]
-        [ div [ class "countdown" ]
-            [ div [ class "countdown-number" ] [ text "10" ]
-            , svg [] [ circle [ r "18", cx "20", cy "20" ] [] ]
-            ]
-        , span [ class "player-name" ] [ text player.name ]
-        , div [ class "cards" ]
-            (List.map (\card -> Game.CardView.cardView [ class "card", onClick (ClickCard card), disabled (not (Game.Client.hintPlayCard model card)) ] card) (player.hand |> Game.Card.sortCards))
-        ]
+    let
+        isPlayerTurn =
+            Game.Client.isPlayerTurn model
+
+        sortedCards =
+            player.hand |> Game.Card.sortCards
+    in
+    div
+        [ class "player-deck", classList [ ( "active", model.currentPlayer == player.uuid ) ] ]
+        ((if isPlayerTurn then
+            [ div [ class "countdown" ] [ svg [] [ circle [ r "18", cx "20", cy "20" ] [] ] ] ]
+
+          else
+            []
+         )
+            ++ [ span [ class "player-name" ] [ text player.name ]
+               , div [ class "cards" ]
+                    (List.map (\card -> Game.CardView.cardView [ class "card", onClick (ClickCard card), disabled (not (Game.Client.hintPlayCard model card)) ] card) sortedCards)
+               ]
+        )
 
 
 displayDrawStack : Int -> Bool -> Html ClientMsg
@@ -294,7 +316,7 @@ viewChoice game card =
 
 
 viewGameOver : Game.Client.Model -> Html ClientMsg
-viewGameOver model =
+viewGameOver _ =
     div [ class "modal" ]
         [ div [ class "modal-content" ]
             [ img [ src "/GameOver.svg", class "logo" ] []

@@ -31,23 +31,29 @@ type alias Model =
     , activeCard : Maybe Card
     , activeColor : Maybe Color
     , gameOver : Bool
+    , turn : Int
     , action : Action
     }
 
 
+isPlayerTurn : Model -> Bool
+isPlayerTurn model =
+    model.currentPlayer == model.localPlayer.uuid
+
+
 showUnoButton : Model -> Bool
 showUnoButton model =
-    List.length model.localPlayer.hand == 1 && not model.localPlayer.saidUno && model.currentPlayer /= model.localPlayer.uuid
+    List.length model.localPlayer.hand == 1 && not model.localPlayer.saidUno && not (model |> isPlayerTurn)
 
 
 hintDrawCard : Model -> Bool
 hintDrawCard model =
-    (model.currentPlayer == model.localPlayer.uuid) && (model.localPlayer.hand |> Game.Card.getPlayableCards ( model.activeCard, model.activeColor ) |> List.isEmpty)
+    (model |> isPlayerTurn) && (model.localPlayer.hand |> Game.Card.getPlayableCards ( model.activeCard, model.activeColor ) |> List.isEmpty)
 
 
 hintPlayCard : Model -> Card -> Bool
 hintPlayCard model card =
-    (model.currentPlayer == model.localPlayer.uuid) && Game.Card.canPlayCard ( model.activeCard, model.activeColor ) card
+    (model |> isPlayerTurn) && Game.Card.canPlayCard ( model.activeCard, model.activeColor ) card
 
 
 decodeDistantPlayer : D.Decoder DistantPlayer
@@ -67,14 +73,25 @@ decodeLocalPlayer =
         (D.field "saidUno" D.bool)
 
 
+decodeApply : D.Decoder a -> D.Decoder (a -> b) -> D.Decoder b
+decodeApply =
+    D.map2 (|>)
+
+
+required : String -> D.Decoder a -> D.Decoder (a -> b) -> D.Decoder b
+required fieldName itemDecoder functionDecoder =
+    decodeApply (D.field fieldName itemDecoder) functionDecoder
+
+
 decodeModel : D.Decoder Model
 decodeModel =
-    D.map8 Model
-        (D.field "distantPlayers" (D.list decodeDistantPlayer))
-        (D.field "localPlayer" decodeLocalPlayer)
-        (D.field "currentPlayer" D.string)
-        (D.field "drawStack" D.int)
-        (D.field "activeCard" (D.nullable Game.Card.decodeCard))
-        (D.field "activeColor" (D.nullable Game.Color.decodeColor))
-        (D.field "gameOver" D.bool)
-        (D.field "action" Game.Action.decodeAction)
+    D.succeed Model
+        |> required "distantPlayers" (D.list decodeDistantPlayer)
+        |> required "localPlayer" decodeLocalPlayer
+        |> required "currentPlayer" D.string
+        |> required "drawStack" D.int
+        |> required "activeCard" (D.nullable Game.Card.decodeCard)
+        |> required "activeColor" (D.nullable Game.Color.decodeColor)
+        |> required "gameOver" D.bool
+        |> required "turn" D.int
+        |> required "action" Game.Action.decodeAction

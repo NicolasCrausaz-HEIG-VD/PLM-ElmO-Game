@@ -1,45 +1,44 @@
-import { Elm } from './elm/Main.elm'
-import './style/index.scss'
-import './style/elmo.scss'
-import { Network } from './script/network'
+import { Elm } from "./elm/Main.elm";
+import "./style/index.scss";
+import "./style/elmo.scss";
+import { Network } from "./script/network";
 
 type Ports = {
   joinRoom: {
-    subscribe: (callback: (code:string) => void) => void;
-  },
+    subscribe: (callback: (code: string) => void) => void;
+  };
   joinedRoom: {
-    send: ([code, playerUUID, success]:[string, string, boolean]) => void;
-  }
+    send: ([code, playerUUID, success]: [string, string, boolean]) => void;
+  };
   createRoom: {
     subscribe: (callback: () => void) => void;
-  }
+  };
   createdRoom: {
     send: (code: string) => void;
-  }
+  };
   outgoingData: {
     subscribe: (callback: (data: HostGameState) => void) => void;
-  }
+  };
   incomingData: {
     send: (data: ClientGameState) => void;
-  }
+  };
   incomingAction: {
     send: (action: Action) => void;
-  }
+  };
   outgoingAction: {
     subscribe: (callback: (data: Action) => void) => void;
-  },
+  };
   lostConnection: {
     send: (uuid: string) => void;
-  }
+  };
   playSound: {
     subscribe: (callback: (name: string) => void) => void;
-  }
-}
+  };
+};
 
 const appState = Elm.Main.init<Ports>({
-  node: document.getElementById('elm-root')!,
+  node: document.getElementById("elm-root")!,
 });
-
 
 let network: Network | undefined;
 
@@ -49,74 +48,75 @@ appState.ports?.joinRoom?.subscribe(async (code) => {
   try {
     await network.connect(code);
 
-    network.channel('data').on(data => {
+    network.channel("data").on((data) => {
       appState.ports?.incomingData?.send(data);
     });
 
-    network.on('removeConnection', (conn) => {
+    network.on("removeConnection", (conn) => {
       appState.ports?.lostConnection?.send(conn.peer);
     });
-  
+
     appState.ports?.outgoingAction?.subscribe((action) => {
-      network?.channel('action').send(code, action);
+      network?.channel("action").send(code, action);
     });
-  
+
     appState.ports?.joinedRoom?.send([code, network.getPeerId(), true]);
   } catch (err) {
     appState.ports?.joinedRoom?.send([code, network.getPeerId(), false]);
   }
 });
 
-
 // Host
 appState.ports?.createRoom?.subscribe(async () => {
   network = new Network({
     middleware() {
       return this.getPeers().length < 10;
-    }
+    },
   });
   const code = await network.onReady();
 
-  network.on('removeConnection', (conn) => {
-    console.log('removeConnection', conn);
+  network.on("removeConnection", (conn) => {
+    console.log("removeConnection", conn);
     appState.ports?.incomingAction?.send({
-      action: 'playerLeave',
+      action: "playerLeave",
       uuid: conn.peer,
     });
   });
 
-  network.channel('action').on(data => {
+  network.channel("action").on((data) => {
     appState.ports?.incomingAction?.send(data);
   });
 
-  network.channel('data').on(data => {
+  network.channel("data").on((data) => {
     appState.ports?.incomingData?.send(data);
   });
 
   appState.ports?.outgoingData?.subscribe((data) => {
-    data.players.forEach(player => {
-      network?.channel('data').send(player.uuid, hostToClient(data, player.uuid));
+    data.players.forEach((player) => {
+      network
+        ?.channel("data")
+        .send(player.uuid, hostToClient(data, player.uuid));
     });
   });
 
   appState.ports?.outgoingAction?.subscribe((action) => {
-    network?.channel('action').send(code, action);
+    network?.channel("action").send(code, action);
   });
 
   appState.ports?.createdRoom?.send(code);
 });
 
-appState.ports?.playSound?.subscribe((name) => {
-  console.log('playSound', name);
-  playSound(name);
+appState.ports?.playSound?.subscribe((path) => {
+  void new Audio(path).play();
 });
 
-
-type Action = {
-  action: 'playerJoin';
-  uuid: string;
-  name: string;
-} | unknown;
+type Action =
+  | {
+      action: "playerJoin";
+      uuid: string;
+      name: string;
+    }
+  | unknown;
 
 interface HostGameState {
   players: Array<{
@@ -131,6 +131,7 @@ interface HostGameState {
   activeCard: string;
   activeColor: string;
   gameOver: boolean;
+  turn: number;
   action: Action;
 }
 
@@ -151,13 +152,17 @@ interface ClientGameState {
   activeCard: string;
   activeColor: string;
   gameOver: boolean;
+  turn: number;
   action: Action;
 }
 
-function hostToClient(host: HostGameState, localPlayerUUID: string): ClientGameState {
+function hostToClient(
+  host: HostGameState,
+  localPlayerUUID: string
+): ClientGameState {
   const players = rotateArray(host.players, localPlayerUUID);
   return {
-    distantPlayers: players.slice(1).map(player => ({
+    distantPlayers: players.slice(1).map((player) => ({
       name: player.name,
       uuid: player.uuid,
       cards: player.hand.length,
@@ -168,16 +173,16 @@ function hostToClient(host: HostGameState, localPlayerUUID: string): ClientGameS
     activeCard: host.activeCard,
     activeColor: host.activeColor,
     gameOver: host.gameOver,
+    turn: host.turn,
     action: host.action,
-  }
+  };
 }
 
 // function to rotate an array to always have the local player at the start
-function rotateArray<T extends { uuid: string }>(arr: T[], localPlayerUUID: string): T[] {
-  const index = arr.findIndex(item => item.uuid === localPlayerUUID);
+function rotateArray<T extends { uuid: string }>(
+  arr: T[],
+  localPlayerUUID: string
+): T[] {
+  const index = arr.findIndex((item) => item.uuid === localPlayerUUID);
   return [...arr.slice(index), ...arr.slice(0, index)];
-}
-
-function playSound(name: string) {
-  new Audio(`/sounds/${name}.mp3`).play();
 }
