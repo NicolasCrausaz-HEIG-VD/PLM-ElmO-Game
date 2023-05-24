@@ -81,7 +81,7 @@ type Msg
     | ConnectClientGame ( Code, UUID, Bool )
     | StartClientGame ( Code, UUID, String )
     | LostConnection Code
-    | Tick Time.Posix
+    | MainTick Time.Posix
 
 
 type ClientMsg
