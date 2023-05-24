@@ -470,3 +470,48 @@ $yellow: #ffee02;
     background-size: contain;
   }
 }
+
+.countdown {
+  position: absolute;
+  right: 0;
+  
+  height: 40px;
+  width: 40px;
+  text-align: center;
+
+  .countdown-number {
+    color: white;
+    line-height: 40px;
+  }
+
+  svg {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 40px;
+    height: 40px;
+    transform: rotateY(-180deg) rotateZ(-90deg);
+  }
+  
+  svg circle {
+    stroke-dasharray: 113px;
+    stroke-dashoffset: 0px;
+    stroke-linecap: round;
+    stroke-width: 2px;
+    stroke: white;
+    fill: none;
+    animation: countdown 10s linear infinite forwards;
+  }
+  
+  @keyframes countdown {
+    from {
+      stroke-dashoffset: 0px;
+    }
+    to {
+      stroke-dashoffset: 113px;
+    }
+  }
+}
+
+
+

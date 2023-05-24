@@ -15,6 +15,9 @@ import Network
 import Random
 import Route
 import Session exposing (Session)
+import Svg exposing (circle, svg)
+import Svg.Attributes exposing (cx, cy, r)
+import Time
 import Utils exposing (Code, UUID)
 
 
@@ -78,6 +81,7 @@ type Msg
     | ConnectClientGame ( Code, UUID, Bool )
     | StartClientGame ( Code, UUID, String )
     | LostConnection Code
+    | Tick Time.Posix
 
 
 type ClientMsg
@@ -158,6 +162,9 @@ update msg model =
         LostConnection _ ->
             ( model, Route.replaceUrl model.session.key Route.Lobby )
 
+        Tick _ ->
+            ( model, Cmd.none )
+
 
 getGameState : Model -> GameState
 getGameState model =
@@ -189,7 +196,11 @@ displayDistantPlayer model player =
 displayPlayerDeck : Game.Client.Model -> Game.Client.LocalPlayer -> Html ClientMsg
 displayPlayerDeck model player =
     div [ class "player-deck", classList [ ( "active", model.currentPlayer == player.uuid ) ] ]
-        [ span [ class "player-name" ] [ text player.name ]
+        [ div [ class "countdown" ]
+            [ div [ class "countdown-number" ] [ text "10" ]
+            , svg [] [ circle [ r "18", cx "20", cy "20" ] [] ]
+            ]
+        , span [ class "player-name" ] [ text player.name ]
         , div [ class "cards" ]
             (List.map (\card -> Game.CardView.cardView [ class "card", onClick (ClickCard card), disabled (not (Game.Client.hintPlayCard model card)) ] card) (player.hand |> Game.Card.sortCards))
         ]
@@ -310,12 +321,13 @@ view model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
+subscriptions model =
     Sub.batch
         [ incomingData (ClientMsg << IncomingData)
         , Game.Host.incomingAction (HostMsg << Game.Host.IncomingAction)
         , Network.joinedRoom ConnectClientGame
         , Network.lostConnection LostConnection
+        , Time.every 1000 Tick
         ]
 
 
