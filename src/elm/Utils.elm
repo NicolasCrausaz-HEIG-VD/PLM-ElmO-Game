@@ -131,9 +131,8 @@ characters =
     , "Sam the Robot"
     , "Little Chrissy"
     , "Mumford"
-    , "Stephane Genesis"
-    , "Donino"
-    , "Biteloutre"
+    , "StephaneGenesis"
+    , "Beateloutre"
     ]
 
 

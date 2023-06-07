@@ -12,7 +12,8 @@ A UNO game written with Elm
 ![Logo](./docs/logo.png)
 
 # Start
-``bash
+```bash
 npm install
+
 npm run dev
-``
+```
